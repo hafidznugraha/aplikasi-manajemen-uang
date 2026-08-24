@@ -207,6 +207,48 @@ Buka peramban (*browser*) Anda dan akses:
 
 ---
 
+## ☁️ Panduan Deployment ke Vercel (Serverless)
+
+Aplikasi BudgetKu telah dikonfigurasi agar siap di-*deploy* ke **Vercel** menggunakan runtime `vercel-php`:
+
+### 1. File Konfigurasi Vercel
+- **[`vercel.json`](file:///d:/aplikasi-manajemen-uang/vercel.json)**: Mengatur rewrite routing semua trafik ke entrypoint `api/index.php` dan static build untuk folder `public/`.
+- **[`api/index.php`](file:///d:/aplikasi-manajemen-uang/api/index.php)**: Entrypoint serverless yang secara dinamis menyiapkan folder writable `/tmp` untuk view cache Laravel sebelum memanggil `public/index.php`.
+
+### 2. Pengaturan Environment Variables di Vercel Dashboard
+Di **Vercel Dashboard** $\rightarrow$ **Project Settings** $\rightarrow$ **Environment Variables**, tambahkan:
+
+| Key | Value / Keterangan |
+|---|---|
+| `APP_NAME` | `BudgetKu` |
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_KEY` | *(Salin dari file `.env` lokal atau jalankan `php artisan key:generate --show`)* |
+| `APP_URL` | `https://your-project.vercel.app` |
+| `LOG_CHANNEL` | `stderr` *(Wajib di serverless)* |
+| `SESSION_DRIVER` | `cookie` atau `database` *(HINDARI `file`)* |
+| `CACHE_STORE` | `database` atau `array` *(HINDARI `file`)* |
+| `DB_CONNECTION` | `pgsql` |
+| `DB_HOST` | `aws-0-ap-southeast-1.pooler.supabase.com` |
+| `DB_PORT` | `5432` |
+| `DB_DATABASE` | `postgres` |
+| `DB_USERNAME` | `postgres.YOUR_PROJECT_REF` |
+| `DB_PASSWORD` | `YOUR_DATABASE_PASSWORD` |
+| `DB_SSLMODE` | `require` |
+| `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
+| `SUPABASE_KEY` | `YOUR_SUPABASE_ANON_KEY` |
+| `VITE_SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | `YOUR_SUPABASE_ANON_KEY` |
+
+### 3. Tambahkan Redirect URL di Supabase
+Di **Supabase Dashboard** $\rightarrow$ **Authentication** $\rightarrow$ **URL Configuration**:
+Tambahkan domain Vercel Anda ke daftar Redirect URLs:
+- `https://your-project.vercel.app/**`
+- `https://your-project.vercel.app/reset-password.html`
+- `https://your-project.vercel.app/reset-password`
+
+---
+
 ## 📁 Struktur Direktori Proyek
 
 ```plaintext
