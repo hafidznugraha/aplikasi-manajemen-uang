@@ -21,6 +21,107 @@ class ApiController extends Controller
     }
 
     /**
+     * Endpoint terpadu untuk sinkronisasi kilat seluruh data aplikasi dalam 1 request
+     */
+    public function getSyncData(Request $request): JsonResponse
+    {
+        $month = $request->query('month', now()->format('Y-m'));
+
+        $budget = Budget::with(['categories.subcategories'])
+            ->firstOrCreate(
+                ['month' => $month],
+                ['total_budget' => 0]
+            );
+
+        $transactions = Transaction::where('budget_id', $budget->id)
+            ->orderBy('date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $archives = Budget::with(['categories.subcategories', 'transactions'])
+            ->where('month', '!=', $month)
+            ->orderBy('month', 'desc')
+            ->limit(6)
+            ->get();
+
+        return response()->json([
+            'budget' => [
+                'id' => (string) $budget->id,
+                'month' => $budget->month,
+                'totalBudget' => (int) $budget->total_budget,
+                'categories' => $budget->categories->map(function ($cat) {
+                    return [
+                        'id' => (string) $cat->id,
+                        'name' => $cat->name,
+                        'budget' => (int) $cat->budget_amount,
+                        'isSavings' => (bool) $cat->is_savings,
+                        'is_savings' => (bool) $cat->is_savings,
+                        'subcategories' => $cat->subcategories->map(function ($sub) {
+                            return [
+                                'id' => (string) $sub->id,
+                                'name' => $sub->name,
+                                'budget' => (int) $sub->budget_amount,
+                            ];
+                        })->values()->all(),
+                    ];
+                })->values()->all(),
+            ],
+            'transactions' => $transactions->map(function ($t) {
+                return [
+                    'id' => (string) $t->id,
+                    'type' => $t->type ?? 'expense',
+                    'date' => $t->date->format('Y-m-d'),
+                    'categoryId' => $t->category_id ? (string) $t->category_id : null,
+                    'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
+                    'description' => $t->description,
+                    'amount' => (int) $t->amount,
+                    'hasReceipt' => !empty($t->receipt_url),
+                    'receiptUrl' => $t->receipt_url,
+                    'createdAt' => $t->created_at->toISOString(),
+                ];
+            })->values()->all(),
+            'archives' => $archives->map(function ($b) {
+                return [
+                    'month' => $b->month,
+                    'totalBudget' => (int) $b->total_budget,
+                    'totalSpent' => (int) $b->transactions->where('type', '!=', 'income')->sum('amount'),
+                    'totalIncome' => (int) $b->transactions->where('type', 'income')->sum('amount'),
+                    'archivedAt' => $b->updated_at->toISOString(),
+                    'categories' => $b->categories->map(function ($cat) {
+                        return [
+                            'id' => (string) $cat->id,
+                            'name' => $cat->name,
+                            'budget' => (int) $cat->budget_amount,
+                            'isSavings' => (bool) $cat->is_savings,
+                            'is_savings' => (bool) $cat->is_savings,
+                            'subcategories' => $cat->subcategories->map(function ($sub) {
+                                return [
+                                    'id' => (string) $sub->id,
+                                    'name' => $sub->name,
+                                    'budget' => (int) $sub->budget_amount,
+                                ];
+                            })->values()->all(),
+                        ];
+                    })->values()->all(),
+                    'transactions' => $b->transactions->map(function ($t) {
+                        return [
+                            'id' => (string) $t->id,
+                            'type' => $t->type ?? 'expense',
+                            'date' => $t->date->format('Y-m-d'),
+                            'categoryId' => $t->category_id ? (string) $t->category_id : null,
+                            'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
+                            'description' => $t->description,
+                            'amount' => (int) $t->amount,
+                            'hasReceipt' => !empty($t->receipt_url),
+                            'receiptUrl' => $t->receipt_url,
+                        ];
+                    })->values()->all(),
+                ];
+            })->values()->all(),
+        ]);
+    }
+
+    /**
      * Dapatkan budget aktif untuk bulan tertentu (default: bulan ini)
      */
     public function getBudget(Request $request): JsonResponse
@@ -38,6 +139,8 @@ class ApiController extends Controller
                 'id' => (string) $cat->id,
                 'name' => $cat->name,
                 'budget' => (int) $cat->budget_amount,
+                'isSavings' => (bool) $cat->is_savings,
+                'is_savings' => (bool) $cat->is_savings,
                 'subcategories' => $cat->subcategories->map(function ($sub) {
                     return [
                         'id' => (string) $sub->id,
@@ -99,10 +202,13 @@ class ApiController extends Controller
             ['total_budget' => 0]
         );
 
+        $isSavings = filter_var($request->input('is_savings', $request->input('isSavings', false)), FILTER_VALIDATE_BOOLEAN);
+
         $category = Category::create([
             'budget_id' => $budget->id,
             'name' => $request->input('name'),
             'budget_amount' => (int) $request->input('budget', 0),
+            'is_savings' => $isSavings,
         ]);
 
         $subcategoriesData = $request->input('subcategories', []);
@@ -129,6 +235,8 @@ class ApiController extends Controller
             'id' => (string) $category->id,
             'name' => $category->name,
             'budget' => (int) $category->budget_amount,
+            'isSavings' => (bool) $category->is_savings,
+            'is_savings' => (bool) $category->is_savings,
             'subcategories' => $createdSubcats,
         ], 201);
     }
@@ -146,6 +254,10 @@ class ApiController extends Controller
 
         if ($request->has('budget')) {
             $category->budget_amount = (int) $request->input('budget');
+        }
+
+        if ($request->has('is_savings') || $request->has('isSavings')) {
+            $category->is_savings = filter_var($request->input('is_savings', $request->input('isSavings')), FILTER_VALIDATE_BOOLEAN);
         }
 
         $category->save();
@@ -176,6 +288,8 @@ class ApiController extends Controller
             'id' => (string) $category->id,
             'name' => $category->name,
             'budget' => (int) $category->budget_amount,
+            'isSavings' => (bool) $category->is_savings,
+            'is_savings' => (bool) $category->is_savings,
             'subcategories' => $category->subcategories->map(function ($s) {
                 return [
                     'id' => (string) $s->id,
@@ -217,8 +331,9 @@ class ApiController extends Controller
         $formatted = $transactions->map(function ($t) {
             return [
                 'id' => (string) $t->id,
+                'type' => $t->type ?? 'expense',
                 'date' => $t->date->format('Y-m-d'),
-                'categoryId' => (string) $t->category_id,
+                'categoryId' => $t->category_id ? (string) $t->category_id : null,
                 'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
                 'description' => $t->description,
                 'amount' => (int) $t->amount,
@@ -236,16 +351,26 @@ class ApiController extends Controller
      */
     public function addTransaction(Request $request): JsonResponse
     {
-        $request->validate([
+        $type = $request->input('type', 'expense');
+
+        $rules = [
             'date' => 'required|date',
-            'category_id' => 'required|exists:categories,id',
+            'type' => 'nullable|string|in:expense,income',
             'subcategory_id' => 'nullable|exists:subcategories,id',
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:1',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
             'receipt_data' => 'nullable|string', // Base64 data jika dikirim via payload
             'month' => 'nullable|string',
-        ]);
+        ];
+
+        if ($type === 'income') {
+            $rules['category_id'] = 'nullable';
+        } else {
+            $rules['category_id'] = 'required|exists:categories,id';
+        }
+
+        $request->validate($rules);
 
         $month = $request->input('month', Carbon::parse($request->input('date'))->format('Y-m'));
         $budget = Budget::firstOrCreate(
@@ -263,7 +388,8 @@ class ApiController extends Controller
 
         $transaction = Transaction::create([
             'budget_id' => $budget->id,
-            'category_id' => $request->input('category_id'),
+            'type' => $type,
+            'category_id' => $type === 'income' ? ($request->input('category_id') ?: null) : $request->input('category_id'),
             'subcategory_id' => $request->input('subcategory_id'),
             'date' => $request->input('date'),
             'description' => $request->input('description'),
@@ -273,8 +399,9 @@ class ApiController extends Controller
 
         return response()->json([
             'id' => (string) $transaction->id,
+            'type' => $transaction->type ?? 'expense',
             'date' => $transaction->date->format('Y-m-d'),
-            'categoryId' => (string) $transaction->category_id,
+            'categoryId' => $transaction->category_id ? (string) $transaction->category_id : null,
             'subcategoryId' => $transaction->subcategory_id ? (string) $transaction->subcategory_id : null,
             'description' => $transaction->description,
             'amount' => (int) $transaction->amount,
@@ -293,7 +420,8 @@ class ApiController extends Controller
 
         $request->validate([
             'date' => 'sometimes|required|date',
-            'category_id' => 'sometimes|required|exists:categories,id',
+            'type' => 'nullable|string|in:expense,income',
+            'category_id' => 'nullable',
             'subcategory_id' => 'nullable|exists:subcategories,id',
             'description' => 'sometimes|required|string|max:255',
             'amount' => 'sometimes|required|numeric|min:1',
@@ -301,9 +429,10 @@ class ApiController extends Controller
             'receipt_data' => 'nullable|string',
         ]);
 
+        if ($request->has('type')) $transaction->type = $request->input('type');
         if ($request->has('date')) $transaction->date = $request->input('date');
-        if ($request->has('category_id')) $transaction->category_id = $request->input('category_id');
-        if ($request->has('subcategory_id')) $transaction->subcategory_id = $request->input('subcategory_id');
+        if ($request->has('category_id')) $transaction->category_id = $request->input('category_id') ?: null;
+        if ($request->has('subcategory_id')) $transaction->subcategory_id = $request->input('subcategory_id') ?: null;
         if ($request->has('description')) $transaction->description = $request->input('description');
         if ($request->has('amount')) $transaction->amount = (int) $request->input('amount');
 
@@ -323,8 +452,9 @@ class ApiController extends Controller
 
         return response()->json([
             'id' => (string) $transaction->id,
+            'type' => $transaction->type ?? 'expense',
             'date' => $transaction->date->format('Y-m-d'),
-            'categoryId' => (string) $transaction->category_id,
+            'categoryId' => $transaction->category_id ? (string) $transaction->category_id : null,
             'subcategoryId' => $transaction->subcategory_id ? (string) $transaction->subcategory_id : null,
             'description' => $transaction->description,
             'amount' => (int) $transaction->amount,

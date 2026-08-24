@@ -166,6 +166,7 @@ function renderProgressBars(archive) {
     
     if (archive.transactions) {
         archive.transactions.forEach(t => {
+            if (t.type === 'income') return;
             if (spentByCategory[t.categoryId] !== undefined) {
                 spentByCategory[t.categoryId] += t.amount;
             }
@@ -181,13 +182,13 @@ function renderProgressBars(archive) {
         const spent = spentByCategory[cat.id] || 0;
         const budget = cat.budget || 0;
         const percentage = calcPercentage(spent, budget);
-        const colorClass = getProgressColor(percentage);
+        const colorClass = getProgressColor(percentage, !!(cat.isSavings || cat.is_savings));
         
         const div = document.createElement('div');
         div.className = 'category-progress mb-3';
         div.innerHTML = `
             <div class="d-flex justify-content-between align-items-end mb-1">
-                <span class="fw-medium small">${cat.name}</span>
+                <span class="fw-medium small">${cat.name} ${cat.isSavings || cat.is_savings ? '<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill small ms-1"><i class="bi bi-piggy-bank"></i></span>' : ''}</span>
                 <span class="small text-muted">${formatRupiahShort(spent)} / ${formatRupiahShort(budget)}</span>
             </div>
             <div class="progress progress-budgetku" style="height: 8px;">
@@ -211,34 +212,45 @@ function renderTransactionsTable(archive) {
     const sortedTxns = [...archive.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
     
     sortedTxns.forEach(txn => {
-        let catName = 'Uncategorized';
-        let subCatName = '';
-        
-        const cat = archive.categories.find(c => c.id === txn.categoryId);
-        if (cat) {
-            catName = cat.name;
-            if (txn.subcategoryId) {
-                const sub = cat.subcategories.find(s => s.id === txn.subcategoryId);
-                if (sub) {
-                    subCatName = ` <span class="text-muted small">› ${sub.name}</span>`;
+        const isIncome = txn.type === 'income';
+        let catHtml = '';
+        let amountHtml = '';
+
+        if (isIncome) {
+            catHtml = `<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle"><i class="bi bi-arrow-down-left me-1"></i>Pemasukan</span>`;
+            amountHtml = `<span class="text-success fw-bold font-monospace">+${formatRupiah(txn.amount)}</span>`;
+        } else {
+            let catName = 'Uncategorized';
+            let subCatName = '';
+            
+            const cat = archive.categories.find(c => c.id === txn.categoryId);
+            if (cat) {
+                catName = cat.name;
+                if (txn.subcategoryId) {
+                    const sub = cat.subcategories.find(s => s.id === txn.subcategoryId);
+                    if (sub) {
+                        subCatName = ` <span class="text-muted small">› ${sub.name}</span>`;
+                    }
                 }
             }
+            catHtml = `<div>${catName}${subCatName}</div>`;
+            amountHtml = `<span class="fw-medium font-monospace text-dark">-${formatRupiah(txn.amount)}</span>`;
         }
         
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>
-                <div class="fw-medium">${formatDateShort(txn.date)}</div>
+                <div class="fw-medium text-nowrap">${formatDateShort(txn.date)}</div>
             </td>
             <td>
-                <div>${catName}${subCatName}</div>
+                ${catHtml}
             </td>
             <td>
                 <div>${txn.description || '-'}</div>
                 ${txn.hasReceipt ? '<span class="badge bg-light text-secondary border mt-1"><i class="bi bi-receipt"></i> Ada struk</span>' : ''}
             </td>
-            <td class="text-end fw-semibold text-danger">
-                ${formatRupiah(txn.amount)}
+            <td class="text-end">
+                ${amountHtml}
             </td>
         `;
         tbody.appendChild(tr);

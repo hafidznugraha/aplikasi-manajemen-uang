@@ -4,19 +4,54 @@
    handles month-change check, sets navbar state.
    ============================================================ */
 
+/* ---------- Top Animated Loading Progress Bar Controls ---------- */
+function showTopLoader(percent = 70) {
+  let loader = document.getElementById('top-loader');
+  if (!loader) {
+    loader = document.createElement('div');
+    loader.id = 'top-loader';
+    document.body.prepend(loader);
+  }
+  loader.style.opacity = '1';
+  loader.style.width = `${percent}%`;
+}
+
+function hideTopLoader() {
+  const loader = document.getElementById('top-loader');
+  if (loader) {
+    loader.style.width = '100%';
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.style.width = '0%';
+      }, 350);
+    }, 150);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Muat data dari Supabase
+  // 1. Mulai animasi top loading bar
+  showTopLoader(40);
+
+  // 2. Set bulan aktif & active nav link
+  updateMonthDisplay();
+  setActiveNavLink();
+
+  // 3. Tambahkan click feedback ke semua navbar link
+  document.querySelectorAll('.navbar-budgetku .nav-link, .navbar-brand').forEach(link => {
+    link.addEventListener('click', (e) => {
+      // Tampilkan animasi loading segera saat user klik
+      showTopLoader(75);
+    });
+  });
+
+  // 4. Inisialisasi Storage & Supabase Sync
+  showTopLoader(70);
   if (typeof initStorage === 'function') {
     await initStorage();
   }
 
-  // 2. Set bulan aktif di navbar
-  updateMonthDisplay();
-
-  // 3. Set active nav link
-  setActiveNavLink();
-
-  // 4. Inisialisasi halaman yang aktif
+  // 5. Inisialisasi halaman yang aktif
   const page = detectPage();
   switch (page) {
     case 'dashboard':
@@ -33,7 +68,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       break;
   }
 
-  // 5. Alert jika belum ada setup budget
+  // 6. Efek fade-in konten halaman
+  const mainContent = document.querySelector('main');
+  if (mainContent) {
+    mainContent.classList.add('page-content-fade');
+  }
+
+  // 7. Selesaikan animasi loading
+  hideTopLoader();
+
+  // 8. Alert jika belum ada setup budget
   if (page === 'dashboard') {
     const budget = getBudget();
     if (!budget || budget.totalBudget === 0) {

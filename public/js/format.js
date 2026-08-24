@@ -132,11 +132,16 @@ function generateId(prefix = 'id') {
 }
 
 /**
- * Tentukan class warna progress bar berdasarkan persentase.
+ * Tentukan class warna progress bar berdasarkan persentase dan jenis kategori.
  * @param {number} percentage - 0 sampai 100+
+ * @param {boolean} isSavings - True jika kategori tabungan/investasi
  * @returns {string} CSS class: "bg-safe", "bg-caution", atau "bg-over"
  */
-function getProgressColor(percentage) {
+function getProgressColor(percentage, isSavings = false) {
+  if (isSavings) {
+    // Khusus kategori tabungan/investasi: menabung 100% atau lebih adalah hal baik -> tetap hijau aman (bg-safe)
+    return 'bg-safe';
+  }
   if (percentage <= 60) return 'bg-safe';
   if (percentage <= 90) return 'bg-caution';
   return 'bg-over';

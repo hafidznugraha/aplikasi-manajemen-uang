@@ -13,20 +13,15 @@
   <!-- Custom CSS -->
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
 
-  <!-- Supabase JS & Server Hydrated Data for Instant & Realtime Loading -->
-  <script>
-    window.__SUPABASE_CONFIG__ = {
-      url: "{{ env('SUPABASE_URL') }}",
-      key: "{{ env('SUPABASE_KEY') }}"
-    };
-    window.__INITIAL_DATA__ = @json($initialData ?? null);
-  </script>
+  <!-- Supabase Meta & Realtime Library -->
+  <meta name="supabase-url" content="{{ env('SUPABASE_URL') }}">
+  <meta name="supabase-key" content="{{ env('SUPABASE_KEY') }}">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-light">
 
   <nav class="navbar navbar-expand-md navbar-budgetku fixed-top">
-    <div class="container">
+    <div class="container-fluid px-4 px-md-5">
       <a class="navbar-brand" href="{{ route('dashboard.index') }}">
         <i class="bi bi-wallet2"></i> BudgetKu
       </a>
@@ -55,7 +50,7 @@
     </div>
   </nav>
 
-  <main class="container mt-5 pt-4 mb-5">
+  <main class="container-fluid px-4 px-md-5 pt-3 pb-5">
     <!-- Setup Alert -->
     <div id="setup-alert" class="alert alert-warning" role="alert">
       <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -79,6 +74,7 @@
               <div>
                 <h6 class="text-muted mb-1">Total Budget</h6>
                 <h4 class="mb-0" id="total-budget">Rp 0</h4>
+                <small class="text-success fw-semibold d-none" id="total-budget-income-note">+ Rp 0 dari pemasukan</small>
               </div>
               <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
                 <i class="bi bi-piggy-bank fs-4"></i>
@@ -134,6 +130,29 @@
         </div>
       </div>
 
+      <!-- Line Chart: Tren Pengeluaran Harian -->
+      <div class="card card-budgetku p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div>
+            <h5 class="card-title mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+              <i class="bi bi-graph-up text-primary"></i> Tren Pengeluaran Harian
+            </h5>
+            <p class="text-muted small mb-0">Pantau fluktuasi dan pola pengeluaran setiap hari dalam bulan ini</p>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-light text-dark border px-3 py-2 rounded-2" id="daily-avg-badge">
+              <i class="bi bi-calculator me-1 text-muted"></i> Rata-rata: <strong id="daily-avg-val">Rp 0</strong>/hari
+            </span>
+            <span class="badge bg-light text-primary border border-primary-subtle px-3 py-2 rounded-2" id="daily-max-badge">
+              <i class="bi bi-arrow-up-right me-1"></i> Puncak: <strong id="daily-max-val">-</strong>
+            </span>
+          </div>
+        </div>
+        <div class="chart-container" style="position: relative; height: 260px; width: 100%;">
+          <canvas id="dailyExpenseChart"></canvas>
+        </div>
+      </div>
+
       <!-- Recent Transactions -->
       <div class="card card-budgetku p-3">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -141,7 +160,7 @@
           <a href="{{ route('tracker.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover table-transactions align-middle">
+          <table class="table table-hover table-transactions align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th>Tanggal</th>
@@ -155,8 +174,19 @@
             </tbody>
           </table>
         </div>
-        <div id="no-transactions" class="text-center text-muted d-none py-3">
+        <div id="no-transactions" class="text-center text-muted d-none py-4">
+          <i class="bi bi-inbox fs-3 d-block mb-1 text-secondary opacity-50"></i>
           Belum ada transaksi bulan ini.
+        </div>
+
+        <!-- Pagination for Recent Transactions -->
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top d-none" id="recent-pagination-container">
+          <small class="text-muted" id="recent-pagination-info">Menampilkan 1-5 dari 10 transaksi</small>
+          <nav aria-label="Navigasi Transaksi">
+            <ul class="pagination pagination-sm mb-0" id="recent-pagination-ul">
+              <!-- Pagination links injected via JS -->
+            </ul>
+          </nav>
         </div>
       </div>
     </div>

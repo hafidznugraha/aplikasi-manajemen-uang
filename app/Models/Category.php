@@ -17,10 +17,12 @@ class Category extends Model
         'budget_id',
         'name',
         'budget_amount',
+        'is_savings',
     ];
 
     protected $casts = [
         'budget_amount' => 'integer',
+        'is_savings' => 'boolean',
     ];
 
     public function budget(): BelongsTo

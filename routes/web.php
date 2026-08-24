@@ -25,6 +25,7 @@ Route::get('/tracker', [TrackerController::class, 'index'])->name('tracker.index
 use App\Http\Controllers\ApiController;
 
 Route::prefix('api')->group(function () {
+    Route::get('/sync', [ApiController::class, 'getSyncData'])->name('api.sync');
     Route::get('/budget', [ApiController::class, 'getBudget'])->name('api.budget.get');
     Route::post('/budget', [ApiController::class, 'updateTotalBudget'])->name('api.budget.update');
 

@@ -18,30 +18,48 @@ let _supabaseClient = null;
 
 /**
  * Inisialisasi Storage:
- * 1. Boot langsung dari window.__INITIAL_DATA__ (0ms delay)
- * 2. Setup Supabase Realtime WebSocket
+ * 1. Instant boot dari localStorage Hot-Cache (0ms delay!)
+ * 2. Background sync kilat via 1 single request /api/sync
+ * 3. Setup Supabase Realtime WebSocket
  */
 async function initStorage() {
   const month = getCurrentMonth();
 
-  // 1. Instant boot dari server-hydrated data jika tersedia
-  if (window.__INITIAL_DATA__) {
-    if (window.__INITIAL_DATA__.budget) {
-      _currentBudget = window.__INITIAL_DATA__.budget;
+  // 1. Instant boot dari Local Hot-Cache jika ada (0ms latency)
+  try {
+    const cached = localStorage.getItem('budgetku_hot_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed.budget && parsed.budget.month === month) {
+        _currentBudget = parsed.budget;
+      }
+      if (Array.isArray(parsed.transactions)) {
+        _currentTransactions = parsed.transactions;
+      }
+      if (Array.isArray(parsed.archives)) {
+        _archiveList = parsed.archives;
+      }
     }
-    if (window.__INITIAL_DATA__.transactions) {
-      _currentTransactions = window.__INITIAL_DATA__.transactions;
-    }
-    if (window.__INITIAL_DATA__.archives) {
-      _archiveList = window.__INITIAL_DATA__.archives;
-    }
-  } else {
-    // Fallback fetching jika dibuka secara direct API
-    await syncFromSupabase(month);
-  }
+  } catch (e) {}
 
   // 2. Setup Supabase Realtime WebSocket Subscriptions
   initSupabaseRealtime();
+
+  // 3. Background sync kilat (non-blocking)
+  syncFromSupabase(month);
+}
+
+/**
+ * Simpan hot-cache ke localStorage (agar instan saat tab dibuka kapan pun)
+ */
+function persistHotCache() {
+  try {
+    localStorage.setItem('budgetku_hot_cache', JSON.stringify({
+      budget: _currentBudget,
+      transactions: _currentTransactions,
+      archives: _archiveList,
+    }));
+  } catch (e) {}
 }
 
 /**
@@ -49,17 +67,19 @@ async function initStorage() {
  */
 function initSupabaseRealtime() {
   if (window._supabaseRealtimeActive) return;
-  if (!window.supabase || !window.__SUPABASE_CONFIG__ || !window.__SUPABASE_CONFIG__.url || !window.__SUPABASE_CONFIG__.key) {
-    return;
-  }
+  if (!window.supabase) return;
+
+  const urlMeta = document.querySelector('meta[name="supabase-url"]');
+  const keyMeta = document.querySelector('meta[name="supabase-key"]');
+  const supabaseUrl = urlMeta ? urlMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.url : '');
+  const supabaseKey = keyMeta ? keyMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.key : '');
+
+  if (!supabaseUrl || !supabaseKey) return;
 
   try {
-    _supabaseClient = window.supabase.createClient(
-      window.__SUPABASE_CONFIG__.url,
-      window.__SUPABASE_CONFIG__.key
-    );
+    _supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Subscribe ke semua perubahan tabel di schema public
+    // Subscribe ke semua perubahan tabel di schema public via WebSocket
     _supabaseClient
       .channel('budgetku-realtime-channel')
       .on(
@@ -68,7 +88,6 @@ function initSupabaseRealtime() {
         async (payload) => {
           console.log('[Supabase Realtime] Perubahan terdeteksi:', payload.table, payload.eventType);
           await syncFromSupabase(getCurrentMonth());
-          triggerActivePageRender();
         }
       )
       .subscribe((status) => {
@@ -84,19 +103,42 @@ function initSupabaseRealtime() {
 }
 
 /**
- * Sinkronisasi data latar belakang dari Supabase API
+ * Sinkronisasi data latar belakang kilat dari Supabase API (1 single request)
  */
 async function syncFromSupabase(month) {
   try {
-    const [budgetRes, txnRes, archiveRes] = await Promise.all([
-      fetch(`/api/budget?month=${month}`),
-      fetch(`/api/transactions?month=${month}`),
-      fetch('/api/archive'),
-    ]);
+    const res = await fetch(`/api/sync?month=${month}`, {
+      headers: { 'Accept': 'application/json' }
+    });
 
-    if (budgetRes.ok) _currentBudget = await budgetRes.json();
-    if (txnRes.ok) _currentTransactions = await txnRes.json();
-    if (archiveRes.ok) _archiveList = await archiveRes.json();
+    if (res.ok) {
+      const data = await res.json();
+
+      const prevStr = JSON.stringify({
+        budget: _currentBudget,
+        transactions: _currentTransactions,
+        archives: _archiveList,
+      });
+
+      const nextStr = JSON.stringify({
+        budget: data.budget || _currentBudget,
+        transactions: data.transactions || _currentTransactions,
+        archives: data.archives || _archiveList,
+      });
+
+      const hasChanged = prevStr !== nextStr;
+
+      if (data.budget) _currentBudget = data.budget;
+      if (Array.isArray(data.transactions)) _currentTransactions = data.transactions;
+      if (Array.isArray(data.archives)) _archiveList = data.archives;
+
+      persistHotCache();
+
+      // Jika data berbeda dari memori lokal (misal baru pertama kali load), render otomatis
+      if (hasChanged) {
+        triggerActivePageRender();
+      }
+    }
   } catch (err) {
     console.error('Sinkronisasi Supabase gagal:', err);
   }
@@ -138,6 +180,7 @@ function saveBudget(budget) {
  */
 async function updateTotalBudget(amount) {
   _currentBudget.totalBudget = amount;
+  persistHotCache();
 
   try {
     const res = await fetch('/api/budget', {
@@ -155,6 +198,7 @@ async function updateTotalBudget(amount) {
     if (res.ok) {
       const data = await res.json();
       _currentBudget.totalBudget = data.totalBudget;
+      persistHotCache();
       return true;
     }
   } catch (err) {
@@ -166,7 +210,7 @@ async function updateTotalBudget(amount) {
 /**
  * Tambah kategori baru
  */
-async function addCategory(name, budgetAmount, subcategories = []) {
+async function addCategory(name, budgetAmount, subcategories = [], isSavings = false) {
   try {
     const res = await fetch('/api/categories', {
       method: 'POST',
@@ -179,6 +223,7 @@ async function addCategory(name, budgetAmount, subcategories = []) {
         name: name,
         budget: budgetAmount,
         subcategories: subcategories,
+        is_savings: isSavings,
       }),
     });
 
@@ -186,6 +231,7 @@ async function addCategory(name, budgetAmount, subcategories = []) {
       const newCat = await res.json();
       if (!_currentBudget.categories) _currentBudget.categories = [];
       _currentBudget.categories.push(newCat);
+      persistHotCache();
       return newCat;
     }
   } catch (err) {
@@ -203,6 +249,12 @@ async function updateCategory(categoryId, updates) {
     if (updates.name !== undefined) cat.name = updates.name;
     if (updates.budget !== undefined) cat.budget = updates.budget;
     if (updates.subcategories !== undefined) cat.subcategories = updates.subcategories;
+    if (updates.isSavings !== undefined) cat.isSavings = updates.isSavings;
+    if (updates.is_savings !== undefined) {
+      cat.is_savings = updates.is_savings;
+      cat.isSavings = updates.is_savings;
+    }
+    persistHotCache();
   }
 
   try {
@@ -221,6 +273,7 @@ async function updateCategory(categoryId, updates) {
       if (idx !== -1) {
         _currentBudget.categories[idx] = updatedCat;
       }
+      persistHotCache();
     }
   } catch (err) {
     console.error('Gagal update kategori:', err);
@@ -232,6 +285,7 @@ async function updateCategory(categoryId, updates) {
  */
 async function deleteCategory(categoryId) {
   _currentBudget.categories = _currentBudget.categories.filter(c => c.id != categoryId);
+  persistHotCache();
 
   try {
     await fetch(`/api/categories/${categoryId}`, {
@@ -262,8 +316,11 @@ function getTransactions() {
 
 async function addTransaction(txn, file = null) {
   const formData = new FormData();
+  formData.append('type', txn.type || 'expense');
   formData.append('date', txn.date);
-  formData.append('category_id', txn.categoryId);
+  if (txn.categoryId) {
+    formData.append('category_id', txn.categoryId);
+  }
   if (txn.subcategoryId) {
     formData.append('subcategory_id', txn.subcategoryId);
   }
@@ -287,6 +344,7 @@ async function addTransaction(txn, file = null) {
     if (res.ok) {
       const newTxn = await res.json();
       _currentTransactions.unshift(newTxn);
+      persistHotCache();
       return newTxn;
     }
   } catch (err) {
@@ -297,9 +355,10 @@ async function addTransaction(txn, file = null) {
 
 async function updateTransaction(txnId, updates, file = null) {
   const formData = new FormData();
+  if (updates.type) formData.append('type', updates.type);
   if (updates.date) formData.append('date', updates.date);
-  if (updates.categoryId) formData.append('category_id', updates.categoryId);
-  if (updates.subcategoryId) formData.append('subcategory_id', updates.subcategoryId);
+  if (updates.categoryId !== undefined) formData.append('category_id', updates.categoryId || '');
+  if (updates.subcategoryId !== undefined) formData.append('subcategory_id', updates.subcategoryId || '');
   if (updates.description) formData.append('description', updates.description);
   if (updates.amount) formData.append('amount', updates.amount);
 
@@ -323,6 +382,7 @@ async function updateTransaction(txnId, updates, file = null) {
       if (idx !== -1) {
         _currentTransactions[idx] = updatedTxn;
       }
+      persistHotCache();
       return updatedTxn;
     }
   } catch (err) {
@@ -332,6 +392,7 @@ async function updateTransaction(txnId, updates, file = null) {
 
 async function deleteTransaction(txnId) {
   _currentTransactions = _currentTransactions.filter(t => t.id != txnId);
+  persistHotCache();
 
   try {
     await fetch(`/api/transactions/${txnId}`, {
@@ -381,15 +442,27 @@ function getSpentByCategory() {
   const transactions = getTransactions();
   const result = {};
   transactions.forEach((txn) => {
-    if (!result[txn.categoryId]) result[txn.categoryId] = 0;
-    result[txn.categoryId] += txn.amount;
+    if (txn.type === 'income') return; // Hanya hitung pengeluaran untuk alokasi kategori
+    if (txn.categoryId) {
+      if (!result[txn.categoryId]) result[txn.categoryId] = 0;
+      result[txn.categoryId] += txn.amount;
+    }
   });
   return result;
 }
 
 function getTotalSpent() {
   const transactions = getTransactions();
-  return transactions.reduce((sum, txn) => sum + txn.amount, 0);
+  return transactions
+    .filter(t => t.type !== 'income')
+    .reduce((sum, txn) => sum + txn.amount, 0);
+}
+
+function getTotalIncome() {
+  const transactions = getTransactions();
+  return transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, txn) => sum + txn.amount, 0);
 }
 
 /* ---------- Archive ---------- */

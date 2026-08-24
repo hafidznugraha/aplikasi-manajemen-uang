@@ -2,7 +2,6 @@ let totalBudgetInput;
 let categoriesContainer;
 let emptyStateCategories;
 let btnAddCategoryTop;
-let addCategoryBottomContainer;
 let allocatedText;
 let allocationBadge;
 let allocationProgress;
@@ -16,7 +15,6 @@ window.initBudget = function() {
   categoriesContainer = document.getElementById('categories-container');
   emptyStateCategories = document.getElementById('empty-state-categories');
   btnAddCategoryTop = document.getElementById('btn-add-category-top');
-  addCategoryBottomContainer = document.getElementById('add-category-bottom-container');
   allocatedText = document.getElementById('allocated-text');
   allocationBadge = document.getElementById('allocation-badge');
   allocationProgress = document.getElementById('allocation-progress');
@@ -47,9 +45,14 @@ function setupEventListeners() {
     btnSetBudget.addEventListener('click', handleSetBudget);
   }
 
-  btnAddCategoryTop.addEventListener('click', openAddCategoryModal);
-  document.getElementById('btn-add-category-bottom').addEventListener('click', openAddCategoryModal);
-  document.getElementById('btn-add-category-empty').addEventListener('click', openAddCategoryModal);
+  if (btnAddCategoryTop) {
+    btnAddCategoryTop.addEventListener('click', openAddCategoryModal);
+  }
+  
+  const btnAddCategoryEmpty = document.getElementById('btn-add-category-empty');
+  if (btnAddCategoryEmpty) {
+    btnAddCategoryEmpty.addEventListener('click', openAddCategoryModal);
+  }
   
   // Modal listeners
   document.getElementById('btn-cancel-cat-modal').addEventListener('click', closeCategoryModal);
@@ -118,130 +121,153 @@ function renderCategories() {
   
   if (categories.length === 0) {
     emptyStateCategories.classList.remove('d-none');
-    btnAddCategoryTop.classList.add('d-none');
-    addCategoryBottomContainer.classList.add('d-none');
+    if (btnAddCategoryTop) btnAddCategoryTop.classList.add('d-none');
     categoriesContainer.innerHTML = '';
     return;
   }
   
   emptyStateCategories.classList.add('d-none');
-  btnAddCategoryTop.classList.remove('d-none');
-  addCategoryBottomContainer.classList.remove('d-none');
+  if (btnAddCategoryTop) btnAddCategoryTop.classList.remove('d-none');
   categoriesContainer.innerHTML = '';
 
   categories.forEach(cat => {
     const hasSubcats = cat.subcategories && cat.subcategories.length > 0;
     
     const row = document.createElement('div');
-    row.className = 'category-row p-3 border rounded mb-3 bg-white';
+    row.className = 'category-item-card p-3 mb-3 bg-white';
     
     const catHeader = document.createElement('div');
-    catHeader.className = 'd-flex align-items-center justify-content-between gap-2 gap-md-3 flex-wrap flex-md-nowrap';
+    catHeader.className = 'd-flex align-items-center justify-content-between flex-wrap flex-md-nowrap gap-3';
     
+    // Left: Icon / Toggle + Category Name & Subcount Badge
     const leftCol = document.createElement('div');
-    leftCol.className = 'd-flex align-items-center gap-2 flex-grow-1';
+    leftCol.className = 'd-flex align-items-center gap-3 flex-grow-1 min-w-0';
     
+    const isSavings = !!(cat.isSavings || cat.is_savings);
+
     if (hasSubcats) {
       const toggleBtn = document.createElement('button');
-      toggleBtn.className = 'btn btn-sm btn-link p-0 text-dark text-decoration-none';
-      toggleBtn.innerHTML = '<i class="bi bi-caret-right-fill"></i>';
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'btn btn-light btn-sm rounded-circle d-flex align-items-center justify-content-center border text-primary shadow-none p-0';
+      toggleBtn.style.width = '36px';
+      toggleBtn.style.height = '36px';
+      toggleBtn.style.flexShrink = '0';
       toggleBtn.setAttribute('data-bs-toggle', 'collapse');
       toggleBtn.setAttribute('data-bs-target', `#subcat-collapse-${cat.id}`);
+      toggleBtn.setAttribute('title', 'Buka/Tutup Sub-Kategori');
+      toggleBtn.innerHTML = '<i class="bi bi-chevron-right"></i>';
       
       toggleBtn.addEventListener('click', function() {
         const icon = this.querySelector('i');
-        if (icon.classList.contains('bi-caret-right-fill')) {
-          icon.classList.replace('bi-caret-right-fill', 'bi-caret-down-fill');
+        if (icon.classList.contains('bi-chevron-right')) {
+          icon.classList.replace('bi-chevron-right', 'bi-chevron-down');
         } else {
-          icon.classList.replace('bi-caret-down-fill', 'bi-caret-right-fill');
+          icon.classList.replace('bi-chevron-down', 'bi-chevron-right');
         }
       });
-      
       leftCol.appendChild(toggleBtn);
     } else {
-      const spacer = document.createElement('span');
-      spacer.style.width = '18px';
-      spacer.style.display = 'inline-block';
-      leftCol.appendChild(spacer);
+      const iconBox = document.createElement('div');
+      iconBox.className = isSavings
+        ? 'category-icon-box bg-success-subtle text-success rounded-circle'
+        : 'category-icon-box bg-primary-subtle text-primary rounded-circle';
+      iconBox.style.width = '36px';
+      iconBox.style.height = '36px';
+      iconBox.innerHTML = isSavings ? '<i class="bi bi-piggy-bank-fill small"></i>' : '<i class="bi bi-tag-fill small"></i>';
+      leftCol.appendChild(iconBox);
     }
     
+    const nameWrapper = document.createElement('div');
+    nameWrapper.className = 'd-flex align-items-center gap-2 flex-wrap';
+    
     const catName = document.createElement('span');
-    catName.className = 'fw-bold';
+    catName.className = 'fw-bold text-dark fs-6';
     catName.textContent = cat.name;
-    leftCol.appendChild(catName);
+    nameWrapper.appendChild(catName);
+
+    if (isSavings) {
+      const savingsBadge = document.createElement('span');
+      savingsBadge.className = 'badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill small fw-semibold';
+      savingsBadge.innerHTML = '<i class="bi bi-piggy-bank me-1"></i>Tabungan';
+      nameWrapper.appendChild(savingsBadge);
+    }
     
-    const midCol = document.createElement('div');
-    midCol.style.width = '200px';
-    const inputGroup = document.createElement('div');
-    inputGroup.className = 'input-group input-group-sm';
-    const prefix = document.createElement('span');
-    prefix.className = 'input-group-text bg-light';
-    prefix.textContent = 'Rp';
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'form-control text-end fw-medium';
-    input.value = window.formatRupiah(cat.budget).replace('Rp ', '');
-    input.addEventListener('input', (e) => {
-      window.formatInputRupiah(e.target);
-      debounceUpdateCategoryBudget(cat.id, input);
-    });
+    if (hasSubcats) {
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-light text-secondary border rounded-pill small fw-normal';
+      badge.innerHTML = `<i class="bi bi-diagram-2 me-1"></i>${cat.subcategories.length} sub`;
+      nameWrapper.appendChild(badge);
+    }
+    leftCol.appendChild(nameWrapper);
     
-    inputGroup.appendChild(prefix);
-    inputGroup.appendChild(input);
-    midCol.appendChild(inputGroup);
-    
+    // Right: Readonly Formatted Amount Badge + Edit/Delete Buttons
     const rightCol = document.createElement('div');
-    rightCol.className = 'd-flex gap-1 ms-auto';
+    rightCol.className = 'd-flex align-items-center gap-3 ms-auto flex-shrink-0';
+    
+    const amountBadge = document.createElement('div');
+    amountBadge.className = 'category-amount-badge fw-bold text-dark font-monospace px-3 py-1 rounded-2';
+    amountBadge.textContent = window.formatRupiah(cat.budget);
+    rightCol.appendChild(amountBadge);
+    
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group btn-group-sm';
     
     const btnEdit = document.createElement('button');
-    btnEdit.className = 'btn btn-sm btn-outline-secondary';
+    btnEdit.className = 'btn btn-outline-secondary';
     btnEdit.innerHTML = '<i class="bi bi-pencil"></i>';
+    btnEdit.setAttribute('title', 'Edit Kategori');
     btnEdit.addEventListener('click', () => openEditCategoryModal(cat.id));
     
     const btnDelete = document.createElement('button');
-    btnDelete.className = 'btn btn-sm btn-outline-danger';
+    btnDelete.className = 'btn btn-outline-danger';
     btnDelete.innerHTML = '<i class="bi bi-trash"></i>';
+    btnDelete.setAttribute('title', 'Hapus Kategori');
     btnDelete.addEventListener('click', () => confirmDeleteRequest(cat.id, cat.name));
     
-    rightCol.appendChild(btnEdit);
-    rightCol.appendChild(btnDelete);
+    btnGroup.appendChild(btnEdit);
+    btnGroup.appendChild(btnDelete);
+    rightCol.appendChild(btnGroup);
     
     catHeader.appendChild(leftCol);
-    catHeader.appendChild(midCol);
     catHeader.appendChild(rightCol);
-    
     row.appendChild(catHeader);
     
-    // Subcategories
+    // Subcategories Collapse Drawer
     if (hasSubcats) {
       const collapseDiv = document.createElement('div');
-      collapseDiv.className = 'collapse mt-3 ps-4 border-top pt-3';
+      collapseDiv.className = 'collapse mt-3 pt-3 border-top';
       collapseDiv.id = `subcat-collapse-${cat.id}`;
       
+      const subContainer = document.createElement('div');
+      subContainer.className = 'subcategories-container';
+      
+      const subTitle = document.createElement('div');
+      subTitle.className = 'text-muted small fw-semibold mb-2 d-flex align-items-center';
+      subTitle.innerHTML = '<i class="bi bi-diagram-2 me-1 text-primary"></i> Rincian Sub-Kategori:';
+      subContainer.appendChild(subTitle);
+      
+      const subList = document.createElement('div');
+      subList.className = 'd-flex flex-column gap-2';
+      
       cat.subcategories.forEach(sub => {
-        const subRow = document.createElement('div');
-        subRow.className = 'subcategory-row d-flex align-items-center justify-content-between mb-2 gap-3 text-muted';
+        const subItem = document.createElement('div');
+        subItem.className = 'subcat-item d-flex align-items-center justify-content-between';
         
         const subName = document.createElement('span');
-        subName.className = 'small flex-grow-1';
-        subName.innerHTML = `<i class="bi bi-arrow-return-right me-2"></i>${sub.name}`;
+        subName.className = 'text-secondary fw-medium small';
+        subName.innerHTML = `<i class="bi bi-arrow-return-right me-2 text-primary"></i>${sub.name}`;
         
-        const subMid = document.createElement('div');
-        subMid.style.width = '150px';
         const subVal = document.createElement('span');
-        subVal.className = 'small fw-medium';
+        subVal.className = 'fw-semibold text-dark small font-monospace';
         subVal.textContent = window.formatRupiah(sub.budget);
-        subMid.appendChild(subVal);
         
-        const subRight = document.createElement('div');
-        subRight.style.width = '70px'; // spacer for alignment with main cat buttons
-        
-        subRow.appendChild(subName);
-        subRow.appendChild(subMid);
-        subRow.appendChild(subRight);
-        
-        collapseDiv.appendChild(subRow);
+        subItem.appendChild(subName);
+        subItem.appendChild(subVal);
+        subList.appendChild(subItem);
       });
+      
+      subContainer.appendChild(subList);
+      collapseDiv.appendChild(subContainer);
       row.appendChild(collapseDiv);
     }
     
@@ -251,14 +277,21 @@ function renderCategories() {
 
 function updateAllocationSummary() {
   const budgetData = window.getBudget();
-  const totalBudget = budgetData.totalBudget;
-  const allocated = budgetData.categories.reduce((sum, cat) => sum + cat.budget, 0);
+  const baselineBudget = budgetData.totalBudget || 0;
+  const totalIncome = typeof window.getTotalIncome === 'function' ? window.getTotalIncome() : 0;
+  const totalCapacity = baselineBudget + totalIncome;
   
-  allocatedText.textContent = `${window.formatRupiah(allocated)} / ${window.formatRupiah(totalBudget)}`;
+  const allocated = (budgetData.categories || []).reduce((sum, cat) => sum + (cat.budget || 0), 0);
+  
+  if (totalIncome > 0) {
+    allocatedText.innerHTML = `${window.formatRupiah(allocated)} / ${window.formatRupiah(totalCapacity)} <small class="text-success fw-normal" style="font-size: 0.82rem;">(termasuk tambahan ${window.formatRupiah(totalIncome)})</small>`;
+  } else {
+    allocatedText.textContent = `${window.formatRupiah(allocated)} / ${window.formatRupiah(baselineBudget)}`;
+  }
   
   let percentage = 0;
-  if (totalBudget > 0) {
-    percentage = (allocated / totalBudget) * 100;
+  if (totalCapacity > 0) {
+    percentage = (allocated / totalCapacity) * 100;
   } else if (allocated > 0) {
     percentage = 100;
   }
@@ -268,15 +301,15 @@ function updateAllocationSummary() {
   allocationProgress.className = 'progress-bar';
   allocationBadge.className = 'badge';
   
-  if (allocated > totalBudget && totalBudget > 0) {
+  if (allocated > totalCapacity && totalCapacity > 0) {
     allocationProgress.classList.add('bg-danger');
     allocationBadge.classList.add('bg-danger');
     allocationBadge.textContent = 'Over Budget';
-  } else if (allocated > totalBudget && totalBudget === 0) {
+  } else if (allocated > totalCapacity && totalCapacity === 0) {
     allocationProgress.classList.add('bg-danger');
     allocationBadge.classList.add('bg-danger');
     allocationBadge.textContent = 'Over Budget';
-  } else if (percentage === 100) {
+  } else if (Math.round(percentage) === 100) {
     allocationProgress.classList.add('bg-success');
     allocationBadge.classList.add('bg-success');
     allocationBadge.textContent = 'Alokasi Pas';
@@ -293,6 +326,8 @@ function openAddCategoryModal() {
   document.getElementById('cat-id-input').value = '';
   document.getElementById('cat-name-input').value = '';
   document.getElementById('cat-budget-input').value = '';
+  const isSavingsCheck = document.getElementById('cat-is-savings');
+  if (isSavingsCheck) isSavingsCheck.checked = false;
   document.getElementById('subcat-list-container').innerHTML = '';
   
   document.getElementById('cat-name-input').classList.remove('is-invalid');
@@ -310,6 +345,11 @@ function openEditCategoryModal(catId) {
   document.getElementById('cat-name-input').value = cat.name;
   document.getElementById('cat-budget-input').value = window.formatRupiah(cat.budget).replace('Rp ', '');
   
+  const isSavingsCheck = document.getElementById('cat-is-savings');
+  if (isSavingsCheck) {
+    isSavingsCheck.checked = !!(cat.isSavings || cat.is_savings);
+  }
+
   const subcatContainer = document.getElementById('subcat-list-container');
   subcatContainer.innerHTML = '';
   
@@ -363,8 +403,11 @@ function addSubcatInputRow(name = '', budget = 0) {
 }
 
 async function saveCategoryFromModal() {
+  const saveBtn = document.getElementById('btn-save-cat-modal');
+  const cancelBtn = document.getElementById('btn-cancel-cat-modal');
   const nameInput = document.getElementById('cat-name-input');
   const budgetInput = document.getElementById('cat-budget-input');
+  const isSavingsInput = document.getElementById('cat-is-savings');
   
   let isValid = true;
   
@@ -405,21 +448,42 @@ async function saveCategoryFromModal() {
   });
   
   if (!isValid) return;
-  
-  const catId = document.getElementById('cat-id-input').value;
-  if (catId) {
-    await window.updateCategory(catId, {
-      name: nameInput.value.trim(),
-      budget: budgetVal,
-      subcategories: subcategories
-    });
-  } else {
-    await window.addCategory(nameInput.value.trim(), budgetVal, subcategories);
+
+  const isSavings = isSavingsInput ? isSavingsInput.checked : false;
+
+  // Tampilkan animasi loading & disable tombol agar tidak diklik ganda
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
   }
+  if (cancelBtn) cancelBtn.disabled = true;
   
-  closeCategoryModal();
-  renderCategories();
-  updateAllocationSummary();
+  try {
+    const catId = document.getElementById('cat-id-input').value;
+    if (catId) {
+      await window.updateCategory(catId, {
+        name: nameInput.value.trim(),
+        budget: budgetVal,
+        subcategories: subcategories,
+        is_savings: isSavings,
+        isSavings: isSavings,
+      });
+    } else {
+      await window.addCategory(nameInput.value.trim(), budgetVal, subcategories, isSavings);
+    }
+    
+    closeCategoryModal();
+    renderCategories();
+    updateAllocationSummary();
+  } catch (err) {
+    console.error('Error saat menyimpan kategori:', err);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = 'Simpan';
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+  }
 }
 
 function confirmDeleteRequest(catId, catName) {
@@ -429,11 +493,30 @@ function confirmDeleteRequest(catId, catName) {
 }
 
 async function confirmDeleteCategory() {
-  if (currentDeleteId) {
-    await window.deleteCategory(currentDeleteId);
-    renderCategories();
-    updateAllocationSummary();
+  const confirmBtn = document.getElementById('btn-confirm-delete');
+  const cancelBtn = document.getElementById('btn-cancel-delete');
+
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menghapus...';
   }
-  deleteConfirmModal.close();
-  currentDeleteId = null;
+  if (cancelBtn) cancelBtn.disabled = true;
+
+  try {
+    if (currentDeleteId) {
+      await window.deleteCategory(currentDeleteId);
+      renderCategories();
+      updateAllocationSummary();
+    }
+  } catch (err) {
+    console.error('Error saat menghapus kategori:', err);
+  } finally {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = 'Hapus';
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+    deleteConfirmModal.close();
+    currentDeleteId = null;
+  }
 }

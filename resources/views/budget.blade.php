@@ -14,20 +14,15 @@
   <!-- Custom CSS -->
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
   
-  <!-- Supabase JS & Server Hydrated Data for Instant & Realtime Loading -->
-  <script>
-    window.__SUPABASE_CONFIG__ = {
-      url: "{{ env('SUPABASE_URL') }}",
-      key: "{{ env('SUPABASE_KEY') }}"
-    };
-    window.__INITIAL_DATA__ = @json($initialData ?? null);
-  </script>
+  <!-- Supabase Meta & Realtime Library -->
+  <meta name="supabase-url" content="{{ env('SUPABASE_URL') }}">
+  <meta name="supabase-key" content="{{ env('SUPABASE_KEY') }}">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-light">
   <!-- Shared Navbar -->
   <nav class="navbar navbar-expand-md navbar-budgetku fixed-top">
-    <div class="container">
+    <div class="container-fluid px-4 px-md-5">
       <a class="navbar-brand" href="{{ route('dashboard.index') }}">
         <i class="bi bi-wallet2"></i> BudgetKu
       </a>
@@ -56,10 +51,13 @@
     </div>
   </nav>
 
-  <main class="container" style="margin-top: 80px; margin-bottom: 120px;">
+  <main class="container-fluid px-4 px-md-5 pt-3" style="margin-bottom: 120px;">
     <!-- Page Header -->
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
-      <h1 class="h3 mb-0">Setup Budget Bulanan</h1>
+      <div>
+        <h1 class="h3 mb-1 fw-bold text-dark">Setup Budget Bulanan</h1>
+        <p class="text-muted mb-0 small">Atur dan alokasikan rencana keuangan Anda untuk bulan ini</p>
+      </div>
     </div>
 
     <!-- Total Uang Bulanan Card -->
@@ -82,31 +80,28 @@
 
     <!-- Kategori & Alokasi Budget Card -->
     <div class="card card-budgetku mb-4">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="card-title mb-0">Kategori & Alokasi Budget</h5>
-          <button class="btn btn-primary btn-sm d-none" id="btn-add-category-top">
-            <i class="bi bi-plus-circle"></i> Tambah Kategori
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div>
+            <h5 class="card-title mb-1 fw-bold text-dark">Kategori & Alokasi Budget</h5>
+            <p class="text-muted small mb-0">Kelola dan tentukan batas rencana pengeluaran per pos</p>
+          </div>
+          <button class="btn btn-primary btn-sm px-3 py-2 fw-semibold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btn-add-category-top">
+            <i class="bi bi-plus-lg"></i> Tambah Kategori
           </button>
         </div>
 
-        <div id="categories-container">
+        <div id="categories-container" class="mt-3">
           <!-- Categories rendered via JS -->
-        </div>
-
-        <div class="mt-3 text-center" id="add-category-bottom-container">
-          <button class="btn btn-outline-primary" id="btn-add-category-bottom">
-            <i class="bi bi-plus-circle"></i> Tambah Kategori
-          </button>
         </div>
 
         <!-- Empty State -->
         <div id="empty-state-categories" class="empty-state text-center py-5 d-none">
           <i class="bi bi-folder2-open display-4 text-muted mb-3 d-block"></i>
-          <h5>Belum ada kategori</h5>
+          <h5 class="fw-bold">Belum ada kategori</h5>
           <p class="text-muted mb-3">Mulai buat kategori budget Anda untuk bulan ini.</p>
-          <button class="btn btn-primary" id="btn-add-category-empty">
-            <i class="bi bi-plus-circle"></i> Tambah Kategori
+          <button class="btn btn-primary px-4 py-2 fw-semibold rounded-2" id="btn-add-category-empty">
+            <i class="bi bi-plus-lg"></i> Tambah Kategori
           </button>
         </div>
 
@@ -114,18 +109,18 @@
     </div>
   </main>
 
-  <!-- Allocation Summary Bar -->
-  <div class="allocation-bar fixed-bottom bg-white border-top py-3 shadow-sm" style="z-index: 1030;">
-    <div class="container">
+  <!-- Allocation Summary Bar (Permanently Fixed to Bottom) -->
+  <footer class="allocation-bar">
+    <div class="container-fluid px-4 px-md-5">
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="fw-bold">Total Teralokasi: <span id="allocated-text">Rp 0 / Rp 0</span></span>
-        <span class="badge bg-primary" id="allocation-badge">Sesuai Budget</span>
+        <span class="fw-bold fs-6 text-dark">Total Teralokasi: <span id="allocated-text" class="text-primary">Rp 0 / Rp 0</span></span>
+        <span class="badge bg-primary px-3 py-2 rounded-pill" id="allocation-badge">Sesuai Budget</span>
       </div>
-      <div class="progress" style="height: 10px;">
-        <div class="progress-bar bg-primary" id="allocation-progress" role="progressbar" style="width: 0%;"></div>
+      <div class="progress" style="height: 10px; border-radius: 6px; background-color: #e2e8f0;">
+        <div class="progress-bar bg-primary" id="allocation-progress" role="progressbar" style="width: 0%; border-radius: 6px;"></div>
       </div>
     </div>
-  </div>
+  </footer>
 
   <!-- Dialogs -->
   <!-- Add/Edit Category Dialog -->
@@ -142,13 +137,20 @@
             <input type="text" class="form-control" id="cat-name-input" placeholder="Contoh: Makanan, Transportasi" required>
             <div class="invalid-feedback">Nama kategori harus diisi.</div>
           </div>
-          <div class="mb-4">
+          <div class="mb-3">
             <label class="form-label fw-medium">Budget Kategori <span class="text-danger">*</span></label>
             <div class="input-group">
               <span class="input-group-text bg-white">Rp</span>
               <input type="text" class="form-control" id="cat-budget-input" placeholder="0" required>
             </div>
             <div class="invalid-feedback">Budget harus lebih dari atau sama dengan 0.</div>
+          </div>
+
+          <div class="form-check mb-4 p-2 bg-light rounded border">
+            <input class="form-check-input ms-1 me-2" type="checkbox" id="cat-is-savings">
+            <label class="form-check-label text-dark fw-medium small" for="cat-is-savings">
+              <i class="bi bi-piggy-bank text-primary me-1"></i> Kategori ini adalah Tabungan/Investasi
+            </label>
           </div>
           
           <hr>

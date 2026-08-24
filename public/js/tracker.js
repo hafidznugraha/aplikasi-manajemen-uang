@@ -34,20 +34,113 @@ function populateCategorySelects() {
   editCategory.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
 
   categories.forEach(cat => {
-    formCategory.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
-    filterCategory.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
-    editCategory.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+    const isSavings = !!(cat.isSavings || cat.is_savings);
+    const suffix = isSavings ? ' 💰 (Tabungan)' : '';
+    formCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
+    filterCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
+    editCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
   });
+}
+
+function handleTypeChange() {
+  const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
+  const catCol = document.getElementById('category-col');
+  const subcatCol = document.getElementById('subcategory-col');
+  const catSelect = document.getElementById('txn-category');
+  const descLabel = document.getElementById('txn-desc-label');
+  const descInput = document.getElementById('txn-desc');
+  const savingsContainer = document.getElementById('savings-confirmation-container');
+
+  if (isIncome) {
+    if (catCol) catCol.classList.add('d-none');
+    if (subcatCol) subcatCol.classList.add('d-none');
+    if (catSelect) {
+      catSelect.required = false;
+      catSelect.value = '';
+    }
+    if (descLabel) descLabel.textContent = 'Sumber Pemasukan / Keterangan';
+    if (descInput) descInput.placeholder = 'Contoh: Gaji bulanan, Bonus proyek, Freelance';
+    if (savingsContainer) savingsContainer.classList.add('d-none');
+  } else {
+    if (catCol) catCol.classList.remove('d-none');
+    if (subcatCol) subcatCol.classList.remove('d-none');
+    if (catSelect) catSelect.required = true;
+    if (descLabel) descLabel.textContent = 'Keterangan';
+    if (descInput) descInput.placeholder = 'Contoh: Makan siang, Bensin, Belanja';
+    handleCategoryChange();
+  }
+}
+
+function handleEditTypeChange() {
+  const isIncome = document.getElementById('edit-type-income') ? document.getElementById('edit-type-income').checked : false;
+  const catCol = document.getElementById('edit-category-col');
+  const subcatRow = document.getElementById('edit-subcategory-row');
+  const catSelect = document.getElementById('edit-txn-category');
+  const savingsContainer = document.getElementById('edit-savings-confirmation-container');
+
+  if (isIncome) {
+    if (catCol) catCol.classList.add('d-none');
+    if (subcatRow) {
+      const subcatCol = subcatRow.querySelector('.col-md-6:first-child');
+      if (subcatCol) subcatCol.classList.add('d-none');
+    }
+    if (catSelect) {
+      catSelect.required = false;
+      catSelect.value = '';
+    }
+    if (savingsContainer) savingsContainer.classList.add('d-none');
+  } else {
+    if (catCol) catCol.classList.remove('d-none');
+    if (subcatRow) {
+      const subcatCol = subcatRow.querySelector('.col-md-6:first-child');
+      if (subcatCol) subcatCol.classList.remove('d-none');
+    }
+    if (catSelect) catSelect.required = true;
+    handleEditCategoryChange();
+  }
 }
 
 function handleCategoryChange() {
   const catId = formCategory.value;
   updateSubcategoryDropdown(catId, formSubcategory);
+
+  const cat = getCategoryById(catId);
+  const isSavings = cat && (cat.isSavings || cat.is_savings);
+  const savingsContainer = document.getElementById('savings-confirmation-container');
+  const savingsConfirm = document.getElementById('txn-savings-confirm');
+
+  if (savingsContainer && savingsConfirm) {
+    if (isSavings) {
+      savingsContainer.classList.remove('d-none');
+      savingsConfirm.checked = false;
+      savingsConfirm.required = true;
+    } else {
+      savingsContainer.classList.add('d-none');
+      savingsConfirm.checked = false;
+      savingsConfirm.required = false;
+    }
+  }
 }
 
 function handleEditCategoryChange() {
   const catId = editCategory.value;
   updateSubcategoryDropdown(catId, editSubcategory);
+
+  const cat = getCategoryById(catId);
+  const isSavings = cat && (cat.isSavings || cat.is_savings);
+  const savingsContainer = document.getElementById('edit-savings-confirmation-container');
+  const savingsConfirm = document.getElementById('edit-txn-savings-confirm');
+
+  if (savingsContainer && savingsConfirm) {
+    if (isSavings) {
+      savingsContainer.classList.remove('d-none');
+      savingsConfirm.required = true;
+    } else {
+      savingsContainer.classList.add('d-none');
+      savingsConfirm.checked = false;
+      savingsConfirm.required = false;
+    }
+  }
 }
 
 function updateSubcategoryDropdown(categoryId, subcategorySelectElement) {
@@ -131,14 +224,27 @@ function removeFile(e) {
 function resetForm() {
   document.getElementById('add-transaction-form').reset();
   document.getElementById('txn-date').value = getToday();
+  const typeExpense = document.getElementById('type-expense');
+  if (typeExpense) typeExpense.checked = true;
+  handleTypeChange();
   formSubcategory.innerHTML = '<option value="">Tidak ada sub-kategori</option>';
+  const savingsContainer = document.getElementById('savings-confirmation-container');
+  const savingsConfirm = document.getElementById('txn-savings-confirm');
+  if (savingsContainer) savingsContainer.classList.add('d-none');
+  if (savingsConfirm) {
+    savingsConfirm.checked = false;
+    savingsConfirm.required = false;
+  }
   removeFile();
 }
 
 async function submitTransaction() {
+  const submitBtn = document.querySelector('#add-transaction-form button[type="submit"]');
+  const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
+  const type = isIncome ? 'income' : 'expense';
   const date = document.getElementById('txn-date').value;
-  const categoryId = formCategory.value;
-  const subcategoryId = formSubcategory.value;
+  const categoryId = isIncome ? null : formCategory.value;
+  const subcategoryId = isIncome ? null : (formSubcategory.value || null);
   const description = document.getElementById('txn-desc').value;
   const amount = parseRupiah(document.getElementById('txn-amount').value);
   
@@ -146,27 +252,57 @@ async function submitTransaction() {
     alert('Nominal harus lebih dari 0');
     return;
   }
+
+  if (type === 'expense') {
+    if (!categoryId) {
+      alert('Harap pilih kategori pengeluaran.');
+      formCategory.focus();
+      return;
+    }
+    const cat = getCategoryById(categoryId);
+    const isSavings = cat && (cat.isSavings || cat.is_savings);
+    const savingsConfirm = document.getElementById('txn-savings-confirm');
+    if (isSavings && savingsConfirm && !savingsConfirm.checked) {
+      alert('Harap centang konfirmasi alokasi tabungan terlebih dahulu.');
+      savingsConfirm.focus();
+      return;
+    }
+  }
   
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+  }
+
   const txnData = {
+    type,
     date,
     categoryId,
-    subcategoryId: subcategoryId || null,
+    subcategoryId,
     description,
     amount,
   };
   
-  await addTransaction(txnData, currentFile);
-  
-  resetForm();
-  
-  // Hide form collapse using Bootstrap API
-  const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('formPengeluaran'));
-  if (bsCollapse) bsCollapse.hide();
-  
-  loadTransactions();
-  
-  // Trigger update event for dashboard/budget sync if needed (app.js handles global state if any)
-  if (window.updateGlobalState) window.updateGlobalState();
+  try {
+    await addTransaction(txnData, currentFile);
+    resetForm();
+    
+    // Hide form collapse using Bootstrap API
+    const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('formPengeluaran'));
+    if (bsCollapse) bsCollapse.hide();
+    
+    loadTransactions();
+    
+    // Trigger update event for dashboard/budget sync if needed (app.js handles global state if any)
+    if (window.updateGlobalState) window.updateGlobalState();
+  } catch (err) {
+    console.error('Error saat menyimpan transaksi:', err);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Simpan';
+    }
+  }
 }
 
 function loadTransactions() {
@@ -175,12 +311,15 @@ function loadTransactions() {
 }
 
 function applyFilters() {
+  const typeFilter = document.getElementById('filter-type') ? document.getElementById('filter-type').value : '';
   const catFilter = filterCategory.value;
   const dateStart = document.getElementById('filter-date-start').value;
   const dateEnd = document.getElementById('filter-date-end').value;
   
   filteredTransactions = currentTransactions.filter(txn => {
     let match = true;
+    const txnType = txn.type || 'expense';
+    if (typeFilter && txnType !== typeFilter) match = false;
     if (catFilter && txn.categoryId !== catFilter) match = false;
     if (dateStart && txn.date < dateStart) match = false;
     if (dateEnd && txn.date > dateEnd) match = false;
@@ -195,6 +334,8 @@ function applyFilters() {
 }
 
 function resetFilters() {
+  const filterTypeEl = document.getElementById('filter-type');
+  if (filterTypeEl) filterTypeEl.value = '';
   filterCategory.value = '';
   document.getElementById('filter-date-start').value = '';
   document.getElementById('filter-date-end').value = '';
@@ -224,13 +365,36 @@ async function renderTable() {
   const pageItems = filteredTransactions.slice(startIndex, endIndex);
   
   for (const txn of pageItems) {
-    const category = getCategoryById(txn.categoryId);
-    const catName = category ? category.name : 'Unknown';
-    
-    let subName = '';
-    if (txn.subcategoryId && category) {
-      const sub = category.subcategories.find(s => s.id === txn.subcategoryId);
-      if (sub) subName = `<div class="small text-muted">${sub.name}</div>`;
+    const isIncome = txn.type === 'income';
+    let categoryHtml = '';
+    let amountHtml = '';
+
+    if (isIncome) {
+      categoryHtml = `
+        <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill fw-semibold px-2 py-1">
+          <i class="bi bi-arrow-down-left me-1"></i>Pemasukan
+        </span>
+      `;
+      amountHtml = `<span class="text-success fw-bold font-monospace">+${formatRupiah(txn.amount)}</span>`;
+    } else {
+      const category = getCategoryById(txn.categoryId);
+      const catName = category ? category.name : 'Umum';
+      const isSavings = category && (category.isSavings || category.is_savings);
+      
+      let subName = '';
+      if (txn.subcategoryId && category) {
+        const sub = category.subcategories.find(s => s.id === txn.subcategoryId);
+        if (sub) subName = `<div class="small text-muted">${sub.name}</div>`;
+      }
+      
+      categoryHtml = `
+        <div class="fw-medium text-dark d-flex align-items-center gap-1">
+          <span>${catName}</span>
+          ${isSavings ? '<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill small"><i class="bi bi-piggy-bank"></i></span>' : ''}
+        </div>
+        ${subName}
+      `;
+      amountHtml = `<span class="fw-bold font-monospace text-dark">-${formatRupiah(txn.amount)}</span>`;
     }
     
     let receiptHtml = '<span class="text-muted">—</span>';
@@ -243,13 +407,10 @@ async function renderTable() {
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="ps-4">${formatDateShort(txn.date)}</td>
-      <td>
-        <div class="fw-medium">${catName}</div>
-        ${subName}
-      </td>
+      <td class="ps-4 text-nowrap">${formatDateShort(txn.date)}</td>
+      <td>${categoryHtml}</td>
       <td>${txn.description}</td>
-      <td class="text-end fw-medium">${formatRupiah(txn.amount)}</td>
+      <td class="text-end">${amountHtml}</td>
       <td class="text-center">${receiptHtml}</td>
       <td class="text-end pe-4">
         <div class="btn-group">
@@ -330,6 +491,15 @@ function openEditDialog(txnId) {
   if (!txn) return;
   
   document.getElementById('edit-txn-id').value = txn.id;
+  const isIncome = txn.type === 'income';
+  const editTypeIncome = document.getElementById('edit-type-income');
+  const editTypeExpense = document.getElementById('edit-type-expense');
+  if (editTypeIncome && editTypeExpense) {
+    editTypeIncome.checked = isIncome;
+    editTypeExpense.checked = !isIncome;
+  }
+  handleEditTypeChange();
+
   document.getElementById('edit-txn-date').value = txn.date;
   document.getElementById('edit-txn-desc').value = txn.description;
   
@@ -337,11 +507,13 @@ function openEditDialog(txnId) {
   amountInput.value = txn.amount;
   formatInputRupiah(amountInput);
   
-  editCategory.value = txn.categoryId;
-  handleEditCategoryChange();
-  
-  if (txn.subcategoryId) {
-    editSubcategory.value = txn.subcategoryId;
+  if (!isIncome && txn.categoryId) {
+    editCategory.value = txn.categoryId;
+    handleEditCategoryChange();
+    
+    if (txn.subcategoryId) {
+      editSubcategory.value = txn.subcategoryId;
+    }
   }
   
   document.getElementById('editTxnDialog').showModal();
@@ -352,10 +524,13 @@ function closeEditDialog() {
 }
 
 async function submitEditTransaction() {
+  const saveBtn = document.querySelector('#editTxnDialog button[type="submit"]');
+  const isIncome = document.getElementById('edit-type-income') ? document.getElementById('edit-type-income').checked : false;
+  const type = isIncome ? 'income' : 'expense';
   const id = document.getElementById('edit-txn-id').value;
   const date = document.getElementById('edit-txn-date').value;
-  const categoryId = editCategory.value;
-  const subcategoryId = editSubcategory.value;
+  const categoryId = isIncome ? null : editCategory.value;
+  const subcategoryId = isIncome ? null : (editSubcategory.value || null);
   const description = document.getElementById('edit-txn-desc').value;
   const amount = parseRupiah(document.getElementById('edit-txn-amount').value);
   
@@ -363,17 +538,48 @@ async function submitEditTransaction() {
     alert('Nominal harus lebih dari 0');
     return;
   }
+
+  if (type === 'expense') {
+    if (!categoryId) {
+      alert('Harap pilih kategori pengeluaran.');
+      editCategory.focus();
+      return;
+    }
+    const cat = getCategoryById(categoryId);
+    const isSavings = cat && (cat.isSavings || cat.is_savings);
+    const savingsConfirm = document.getElementById('edit-txn-savings-confirm');
+    if (isSavings && savingsConfirm && !savingsConfirm.checked) {
+      alert('Harap centang konfirmasi alokasi tabungan terlebih dahulu.');
+      savingsConfirm.focus();
+      return;
+    }
+  }
   
-  await updateTransaction(id, {
-    date,
-    categoryId,
-    subcategoryId: subcategoryId || null,
-    description,
-    amount
-  });
-  
-  closeEditDialog();
-  loadTransactions();
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+  }
+
+  try {
+    await updateTransaction(id, {
+      type,
+      date,
+      categoryId,
+      subcategoryId,
+      description,
+      amount
+    });
+    
+    closeEditDialog();
+    loadTransactions();
+  } catch (err) {
+    console.error('Error saat mengubah transaksi:', err);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = 'Simpan Perubahan';
+    }
+  }
 }
 
 // Delete Dialog
@@ -382,13 +588,24 @@ let txnToDelete = null;
 function confirmDelete(txnId) {
   txnToDelete = txnId;
   const dialog = document.getElementById('deleteConfirmDialog');
+  const deleteBtn = document.getElementById('btn-confirm-delete');
   
-  document.getElementById('btn-confirm-delete').onclick = async () => {
+  deleteBtn.onclick = async () => {
     if (txnToDelete) {
-      await deleteTransaction(txnToDelete);
-      txnToDelete = null;
-      dialog.close();
-      loadTransactions();
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menghapus...';
+      
+      try {
+        await deleteTransaction(txnToDelete);
+        txnToDelete = null;
+        dialog.close();
+        loadTransactions();
+      } catch (err) {
+        console.error('Error saat menghapus transaksi:', err);
+      } finally {
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = 'Hapus';
+      }
     }
   };
   
@@ -399,3 +616,4 @@ function closeDeleteDialog() {
   txnToDelete = null;
   document.getElementById('deleteConfirmDialog').close();
 }
+

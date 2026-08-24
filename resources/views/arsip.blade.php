@@ -14,21 +14,16 @@
   <!-- Custom CSS -->
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
 
-  <!-- Supabase JS & Server Hydrated Data for Instant & Realtime Loading -->
-  <script>
-    window.__SUPABASE_CONFIG__ = {
-      url: "{{ env('SUPABASE_URL') }}",
-      key: "{{ env('SUPABASE_KEY') }}"
-    };
-    window.__INITIAL_DATA__ = @json($initialData ?? null);
-  </script>
+  <!-- Supabase Meta & Realtime Library -->
+  <meta name="supabase-url" content="{{ env('SUPABASE_URL') }}">
+  <meta name="supabase-key" content="{{ env('SUPABASE_KEY') }}">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-light">
 
 <!-- Shared Navbar -->
 <nav class="navbar navbar-expand-md navbar-budgetku fixed-top">
-  <div class="container">
+  <div class="container-fluid px-4 px-md-5">
     <a class="navbar-brand" href="{{ route('dashboard.index') }}">
       <i class="bi bi-wallet2"></i> BudgetKu
     </a>
@@ -57,7 +52,7 @@
   </div>
 </nav>
 
-<div class="container mt-5 pt-4 mb-5">
+<main class="container-fluid px-4 px-md-5 pt-3 pb-5">
   <div class="page-header mb-4 d-flex justify-content-between align-items-center">
     <h1 class="h3 mb-0">Arsip Bulanan</h1>
   </div>
@@ -158,7 +153,7 @@
       </div>
     </div>
   </div>
-</div>
+</main>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

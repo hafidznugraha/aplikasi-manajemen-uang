@@ -14,21 +14,16 @@
   <!-- Custom CSS -->
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
 
-  <!-- Supabase JS & Server Hydrated Data for Instant & Realtime Loading -->
-  <script>
-    window.__SUPABASE_CONFIG__ = {
-      url: "{{ env('SUPABASE_URL') }}",
-      key: "{{ env('SUPABASE_KEY') }}"
-    };
-    window.__INITIAL_DATA__ = @json($initialData ?? null);
-  </script>
+  <!-- Supabase Meta & Realtime Library -->
+  <meta name="supabase-url" content="{{ env('SUPABASE_URL') }}">
+  <meta name="supabase-key" content="{{ env('SUPABASE_KEY') }}">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-light pb-5 pt-5 mt-4">
+<body class="bg-light">
 
   <!-- Shared Navbar -->
   <nav class="navbar navbar-expand-md navbar-budgetku fixed-top">
-    <div class="container">
+    <div class="container-fluid px-4 px-md-5">
       <a class="navbar-brand" href="{{ route('dashboard.index') }}">
         <i class="bi bi-wallet2"></i> BudgetKu
       </a>
@@ -57,33 +52,52 @@
     </div>
   </nav>
 
-  <div class="container mt-4">
+  <main class="container-fluid px-4 px-md-5 pt-3 pb-5">
     <!-- Page Header -->
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
-      <h2 class="h4 mb-0 fw-bold">Tracker Harian</h2>
+      <div>
+        <h2 class="h4 mb-1 fw-bold text-dark">Tracker Harian</h2>
+        <p class="text-muted small mb-0">Catat dan pantau arus pengeluaran serta pemasukan tambahan Anda</p>
+      </div>
       <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#formPengeluaran" aria-expanded="false" aria-controls="formPengeluaran">
-        <i class="bi bi-plus-lg"></i> Tambah Pengeluaran
+        <i class="bi bi-plus-lg"></i> Tambah Transaksi
       </button>
     </div>
 
-    <!-- Add Expense Form Collapse -->
+    <!-- Add Transaction Form Collapse -->
     <div class="collapse mb-4" id="formPengeluaran">
-      <div class="card card-budgetku card-body border-0 shadow-sm">
-        <h5 class="card-title mb-4">Tambah Pengeluaran Baru</h5>
+      <div class="card card-budgetku card-body border-0 shadow-sm p-4">
+        <h5 class="card-title mb-3 fw-bold text-dark" id="form-card-title">Tambah Transaksi Baru</h5>
         <form id="add-transaction-form" onsubmit="event.preventDefault(); submitTransaction();">
           
+          <!-- Tipe Transaksi: Pengeluaran vs Pemasukan -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-dark small mb-2">Tipe Transaksi</label>
+            <div class="btn-group w-100" role="group" aria-label="Tipe Transaksi">
+              <input type="radio" class="btn-check" name="txn-type" id="type-expense" value="expense" checked autocomplete="off" onchange="handleTypeChange()">
+              <label class="btn btn-outline-danger fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-expense">
+                <i class="bi bi-dash-circle-fill"></i> Pengeluaran
+              </label>
+
+              <input type="radio" class="btn-check" name="txn-type" id="type-income" value="income" autocomplete="off" onchange="handleTypeChange()">
+              <label class="btn btn-outline-success fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-income">
+                <i class="bi bi-plus-circle-fill"></i> Pemasukan Tambahan
+              </label>
+            </div>
+          </div>
+
           <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label for="txn-date" class="form-label">Tanggal</label>
               <input type="date" class="form-control" id="txn-date" required>
             </div>
-            <div class="col-md-4">
-              <label for="txn-category" class="form-label">Kategori</label>
+            <div class="col-md-4" id="category-col">
+              <label for="txn-category" class="form-label" id="txn-category-label">Kategori</label>
               <select class="form-select" id="txn-category" required onchange="handleCategoryChange()">
                 <option value="" disabled selected>Pilih Kategori</option>
               </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" id="subcategory-col">
               <label for="txn-subcategory" class="form-label">Sub-Kategori</label>
               <select class="form-select" id="txn-subcategory">
                 <option value="">Tidak ada sub-kategori</option>
@@ -93,7 +107,7 @@
 
           <div class="row g-3 mb-3">
             <div class="col-md-6">
-              <label for="txn-desc" class="form-label">Keterangan</label>
+              <label for="txn-desc" class="form-label" id="txn-desc-label">Keterangan</label>
               <input type="text" class="form-control" id="txn-desc" placeholder="Contoh: Makan siang" required>
             </div>
             <div class="col-md-6">
@@ -102,6 +116,16 @@
                 <span class="input-group-text">Rp</span>
                 <input type="text" class="form-control" id="txn-amount" placeholder="0" required oninput="formatInputRupiah(this)">
               </div>
+            </div>
+          </div>
+
+          <!-- Konfirmasi Tabungan Dinamis -->
+          <div class="mb-3 d-none p-3 bg-success-subtle rounded border border-success-subtle" id="savings-confirmation-container">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="txn-savings-confirm">
+              <label class="form-check-label text-success-emphasis fw-semibold small" for="txn-savings-confirm">
+                <i class="bi bi-piggy-bank-fill me-1"></i> Saya mengonfirmasi bahwa ini adalah alokasi tabungan
+              </label>
             </div>
           </div>
 
@@ -135,8 +159,15 @@
 
     <!-- Filter Bar -->
     <div class="filter-bar bg-white p-3 rounded shadow-sm mb-4 d-flex flex-wrap gap-3 align-items-center">
-      <div class="flex-grow-1" style="min-width: 200px;">
-        <select class="form-select" id="filter-category" onchange="applyFilters()">
+      <div style="min-width: 150px;">
+        <select class="form-select form-select-sm" id="filter-type" onchange="applyFilters()">
+          <option value="">Semua Tipe</option>
+          <option value="expense">Pengeluaran</option>
+          <option value="income">Pemasukan</option>
+        </select>
+      </div>
+      <div class="flex-grow-1" style="min-width: 180px;">
+        <select class="form-select form-select-sm" id="filter-category" onchange="applyFilters()">
           <option value="">Semua Kategori</option>
         </select>
       </div>
@@ -159,7 +190,7 @@
             <thead class="table-light">
               <tr>
                 <th scope="col" class="ps-4">Tanggal</th>
-                <th scope="col">Kategori</th>
+                <th scope="col">Tipe / Kategori</th>
                 <th scope="col">Keterangan</th>
                 <th scope="col" class="text-end">Nominal</th>
                 <th scope="col" class="text-center">Struk</th>
@@ -187,7 +218,7 @@
         <!-- Rendered via JS -->
       </ul>
     </nav>
-  </div>
+  </main>
 
   <!-- Dialog: Receipt Preview -->
   <dialog id="receiptDialog" class="modal-budgetku rounded shadow border-0 p-0" style="max-width: 500px; width: 90%;">
@@ -209,24 +240,40 @@
   <!-- Dialog: Edit Transaction -->
   <dialog id="editTxnDialog" class="modal-budgetku rounded shadow border-0 p-0" style="max-width: 600px; width: 95%;">
     <div class="modal-header-bk d-flex justify-content-between align-items-center p-3 border-bottom">
-      <h5 class="m-0">Edit Pengeluaran</h5>
+      <h5 class="m-0 fw-bold">Edit Transaksi</h5>
       <button class="btn btn-sm btn-light border-0" onclick="closeEditDialog()"><i class="bi bi-x-lg"></i></button>
     </div>
     <form id="edit-transaction-form" onsubmit="event.preventDefault(); submitEditTransaction();">
       <div class="modal-body-bk p-3">
         <input type="hidden" id="edit-txn-id">
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold text-dark small mb-2">Tipe Transaksi</label>
+          <div class="btn-group w-100" role="group" aria-label="Edit Tipe Transaksi">
+            <input type="radio" class="btn-check" name="edit-txn-type" id="edit-type-expense" value="expense" checked autocomplete="off" onchange="handleEditTypeChange()">
+            <label class="btn btn-outline-danger btn-sm fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="edit-type-expense">
+              <i class="bi bi-dash-circle-fill"></i> Pengeluaran
+            </label>
+
+            <input type="radio" class="btn-check" name="edit-txn-type" id="edit-type-income" value="income" autocomplete="off" onchange="handleEditTypeChange()">
+            <label class="btn btn-outline-success btn-sm fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="edit-type-income">
+              <i class="bi bi-plus-circle-fill"></i> Pemasukan
+            </label>
+          </div>
+        </div>
+
         <div class="row g-3 mb-3">
           <div class="col-md-6">
             <label for="edit-txn-date" class="form-label">Tanggal</label>
             <input type="date" class="form-control" id="edit-txn-date" required>
           </div>
-          <div class="col-md-6">
-            <label for="edit-txn-category" class="form-label">Kategori</label>
+          <div class="col-md-6" id="edit-category-col">
+            <label for="edit-txn-category" class="form-label" id="edit-txn-category-label">Kategori</label>
             <select class="form-select" id="edit-txn-category" required onchange="handleEditCategoryChange()">
             </select>
           </div>
         </div>
-        <div class="row g-3 mb-3">
+        <div class="row g-3 mb-3" id="edit-subcategory-row">
           <div class="col-md-6">
             <label for="edit-txn-subcategory" class="form-label">Sub-Kategori</label>
             <select class="form-select" id="edit-txn-subcategory">
@@ -243,6 +290,15 @@
         <div class="mb-3">
           <label for="edit-txn-desc" class="form-label">Keterangan</label>
           <input type="text" class="form-control" id="edit-txn-desc" required>
+        </div>
+        <!-- Konfirmasi Tabungan Dinamis (Edit) -->
+        <div class="mb-3 d-none p-3 bg-success-subtle rounded border border-success-subtle" id="edit-savings-confirmation-container">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="edit-txn-savings-confirm">
+            <label class="form-check-label text-success-emphasis fw-semibold small" for="edit-txn-savings-confirm">
+              <i class="bi bi-piggy-bank-fill me-1"></i> Saya mengonfirmasi bahwa ini adalah alokasi tabungan
+            </label>
+          </div>
         </div>
       </div>
       <div class="modal-footer-bk p-3 border-top d-flex justify-content-end gap-2">
