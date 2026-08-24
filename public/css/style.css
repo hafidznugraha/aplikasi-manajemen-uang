@@ -603,10 +603,22 @@ select:user-invalid {
 }
 
 /* ---------- Modern Tom Select Styling for Filters ---------- */
-.ts-wrapper.form-select-sm .ts-control,
+.ts-wrapper,
+.ts-wrapper.form-select,
+.ts-wrapper.form-select-sm,
+.ts-wrapper.form-control,
+.ts-wrapper.single {
+  border: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  outline: none !important;
+}
+
 .ts-control {
   min-height: 38px !important;
-  padding: 0.4rem 0.85rem !important;
+  padding: 0.45rem 0.85rem !important;
   border-radius: 12px !important;
   border: 1px solid var(--bk-border) !important;
   background-color: #ffffff !important;
@@ -618,6 +630,7 @@ select:user-invalid {
   align-items: center !important;
   cursor: pointer !important;
   user-select: none !important;
+  outline: none !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 

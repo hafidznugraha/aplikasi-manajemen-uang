@@ -105,7 +105,7 @@
     <!-- Filter Bar -->
     <div class="filter-bar bg-white p-3 rounded-4 shadow-sm mb-4 d-flex flex-wrap gap-3 align-items-center">
       <div style="min-width: 170px;">
-        <select class="form-select form-select-sm" id="filter-type" onchange="applyFilters()">
+        <select id="filter-type" onchange="applyFilters()">
           <option value="">Semua Tipe</option>
           <option value="expense">Pengeluaran</option>
           <option value="income">Pemasukan</option>
@@ -113,7 +113,7 @@
         </select>
       </div>
       <div class="flex-grow-1" style="min-width: 200px;">
-        <select class="form-select form-select-sm" id="filter-category" onchange="applyFilters()">
+        <select id="filter-category" onchange="applyFilters()">
           <option value="">Semua Kategori</option>
         </select>
       </div>
@@ -202,13 +202,13 @@
               </div>
               <div class="col-md-4" id="category-col">
                 <label for="txn-category" class="form-label fw-medium small" id="txn-category-label">Kategori</label>
-                <select class="form-select" id="txn-category" required onchange="handleCategoryChange()">
+                <select id="txn-category" required onchange="handleCategoryChange()">
                   <option value="" disabled selected>Pilih Kategori</option>
                 </select>
               </div>
               <div class="col-md-4" id="subcategory-col">
                 <label for="txn-subcategory" class="form-label fw-medium small">Sub-Kategori</label>
-                <select class="form-select" id="txn-subcategory">
+                <select id="txn-subcategory">
                   <option value="">Tidak ada sub-kategori</option>
                 </select>
               </div>
@@ -318,14 +318,14 @@
           </div>
           <div class="col-md-6" id="edit-category-col">
             <label for="edit-txn-category" class="form-label" id="edit-txn-category-label">Kategori</label>
-            <select class="form-select" id="edit-txn-category" required onchange="handleEditCategoryChange()">
+            <select id="edit-txn-category" required onchange="handleEditCategoryChange()">
             </select>
           </div>
         </div>
         <div class="row g-3 mb-3" id="edit-subcategory-row">
           <div class="col-md-6">
             <label for="edit-txn-subcategory" class="form-label">Sub-Kategori</label>
-            <select class="form-select" id="edit-txn-subcategory">
+            <select id="edit-txn-subcategory">
             </select>
           </div>
           <div class="col-md-6">
