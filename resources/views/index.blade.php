@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - BudgetKu</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="{{ asset('css/style.css') }}" rel="stylesheet">
+
+  <!-- Supabase JS & Server Hydrated Data for Instant & Realtime Loading -->
+  <script>
+    window.__SUPABASE_CONFIG__ = {
+      url: "{{ env('SUPABASE_URL') }}",
+      key: "{{ env('SUPABASE_KEY') }}"
+    };
+    window.__INITIAL_DATA__ = @json($initialData ?? null);
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-light">
+
+  <nav class="navbar navbar-expand-md navbar-budgetku fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="{{ route('dashboard.index') }}">
+        <i class="bi bi-wallet2"></i> BudgetKu
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="{{ route('dashboard.index') }}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ route('budget.index') }}"><i class="bi bi-piggy-bank"></i> Budget</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ route('tracker.index') }}"><i class="bi bi-journal-text"></i> Tracker</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ route('arsip.index') }}"><i class="bi bi-archive"></i> Arsip</a>
+          </li>
+        </ul>
+        <span class="month-selector" id="current-month-display">
+          <i class="bi bi-calendar3"></i>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container mt-5 pt-4 mb-5">
+    <!-- Setup Alert -->
+    <div id="setup-alert" class="alert alert-warning" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      Budget bulan ini belum diatur. <a href="{{ route('budget.index') }}" class="alert-link">Atur budget sekarang</a>.
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state text-center my-5 p-5 bg-white rounded shadow-sm">
+      <i class="bi bi-wallet2 display-1 text-muted"></i>
+      <h3 class="mt-3">Selamat Datang di BudgetKu!</h3>
+      <p class="text-muted">Mulai kelola keuangan Anda dengan membuat budget bulanan pertama.</p>
+      <a href="{{ route('budget.index') }}" class="btn btn-primary mt-3"><i class="bi bi-plus-circle"></i> Buat Budget</a>
+    </div>
+
+    <div id="dashboard-content" class="d-none">
+      <!-- 3 Summary Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="card card-budgetku summary-card card-budget p-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Total Budget</h6>
+                <h4 class="mb-0" id="total-budget">Rp 0</h4>
+              </div>
+              <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+                <i class="bi bi-piggy-bank fs-4"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card card-budgetku summary-card card-spent p-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Total Pengeluaran</h6>
+                <h4 class="mb-0" id="total-spent">Rp 0</h4>
+              </div>
+              <div class="icon-box bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
+                <i class="bi bi-cart-dash fs-4"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card card-budgetku summary-card card-remaining p-3" id="remaining-card">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Sisa Budget</h6>
+                <h4 class="mb-0" id="total-remaining">Rp 0</h4>
+              </div>
+              <div class="icon-box bg-success bg-opacity-10 text-success p-3 rounded-circle">
+                <i class="bi bi-wallet2 fs-4"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-column section -->
+      <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+          <div class="card card-budgetku h-100 p-3">
+            <h5 class="mb-3">Alokasi Budget per Kategori</h5>
+            <div class="chart-container" style="position: relative; height:300px; width:100%">
+              <canvas id="budgetChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card card-budgetku h-100 p-3">
+            <h5 class="mb-3">Progress Pengeluaran Kategori</h5>
+            <div id="category-progress-container" class="overflow-auto" style="max-height: 300px;">
+              <!-- Progress bars injected here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="card card-budgetku p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">Transaksi Terakhir</h5>
+          <a href="{{ route('tracker.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-transactions align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Tanggal</th>
+                <th>Kategori</th>
+                <th>Keterangan</th>
+                <th class="text-end">Nominal</th>
+              </tr>
+            </thead>
+            <tbody id="recent-transactions-tbody">
+              <!-- Transactions injected here -->
+            </tbody>
+          </table>
+        </div>
+        <div id="no-transactions" class="text-center text-muted d-none py-3">
+          Belum ada transaksi bulan ini.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Chart.js (only for dashboard) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  
+  <!-- Shared JS Files -->
+  <script src="{{ asset('js/format.js') }}"></script>
+  <script src="{{ asset('js/storage.js') }}"></script>
+  <script src="{{ asset('js/dashboard.js') }}"></script>
+  <script src="{{ asset('js/app.js') }}"></script>
+</body>
+</html>
