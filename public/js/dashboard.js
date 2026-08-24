@@ -174,13 +174,19 @@ function renderDailyExpenseChart(budget) {
     labels.push(`${d}`);
   }
   
-  const transactions = getTransactions();
+  const allTransactions = getTransactions();
+  // Filter HANYA transaksi pengeluaran (bukan income, bukan reallocation, bukan sistem)
+  const expenseTransactions = allTransactions.filter(txn => {
+    const type = txn.type || 'expense';
+    const isSystem = !!(txn.is_system || txn.isSystem);
+    return type === 'expense' && !isSystem;
+  });
+
   let maxSpent = 0;
   let maxDay = null;
   let totalMonthSpent = 0;
   
-  transactions.forEach(txn => {
-    if (txn.type === 'income') return; // Hanya chart pengeluaran
+  expenseTransactions.forEach(txn => {
     if (!txn.date) return;
     const parts = txn.date.split('-');
     if (parts.length === 3 && parseInt(parts[0], 10) === year && parseInt(parts[1], 10) === month) {
