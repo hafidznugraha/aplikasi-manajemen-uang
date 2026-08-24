@@ -6,13 +6,16 @@
  * and forwards the HTTP request to public/index.php.
  */
 
-// Pastikan direktori cache dan views di /tmp dibuat secara dinamis
+$tmpStorage = '/tmp/storage';
 $tmpDirectories = [
-    '/tmp/views',
-    '/tmp/cache',
-    '/tmp/cache/data',
-    '/tmp/sessions',
-    '/tmp/logs',
+    $tmpStorage,
+    $tmpStorage . '/framework',
+    $tmpStorage . '/framework/views',
+    $tmpStorage . '/framework/cache',
+    $tmpStorage . '/framework/cache/data',
+    $tmpStorage . '/framework/sessions',
+    $tmpStorage . '/logs',
+    $tmpStorage . '/app',
 ];
 
 foreach ($tmpDirectories as $dir) {
@@ -22,8 +25,9 @@ foreach ($tmpDirectories as $dir) {
 }
 
 // Set environment path untuk compiler blade view Laravel
-putenv('VIEW_COMPILED_PATH=/tmp/views');
-$_ENV['VIEW_COMPILED_PATH'] = '/tmp/views';
+putenv("VIEW_COMPILED_PATH={$tmpStorage}/framework/views");
+$_ENV['VIEW_COMPILED_PATH'] = "{$tmpStorage}/framework/views";
+$_SERVER['VIEW_COMPILED_PATH'] = "{$tmpStorage}/framework/views";
 
 // Load entrypoint utama Laravel
 require __DIR__ . '/../public/index.php';
