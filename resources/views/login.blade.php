@@ -29,7 +29,7 @@
       </div>
 
       <!-- Login Form -->
-      <form id="login-form">
+      <form id="login-form" onsubmit="return handleLoginSubmit(event);">
         <!-- Email Input -->
         <div class="mb-3">
           <label for="login-email" class="form-label fw-medium text-dark small">Alamat Email</label>
