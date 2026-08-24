@@ -11,6 +11,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <!-- Google Fonts: Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tom Select CSS (Bootstrap 5 theme) -->
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
   <!-- Custom CSS -->
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
 
@@ -101,8 +103,8 @@
     </div>
 
     <!-- Filter Bar -->
-    <div class="filter-bar bg-white p-3 rounded shadow-sm mb-4 d-flex flex-wrap gap-3 align-items-center">
-      <div style="min-width: 150px;">
+    <div class="filter-bar bg-white p-3 rounded-4 shadow-sm mb-4 d-flex flex-wrap gap-3 align-items-center">
+      <div style="min-width: 170px;">
         <select class="form-select form-select-sm" id="filter-type" onchange="applyFilters()">
           <option value="">Semua Tipe</option>
           <option value="expense">Pengeluaran</option>
@@ -110,20 +112,20 @@
           <option value="reallocation">Realokasi</option>
         </select>
       </div>
-      <div class="flex-grow-1" style="min-width: 180px;">
+      <div class="flex-grow-1" style="min-width: 200px;">
         <select class="form-select form-select-sm" id="filter-category" onchange="applyFilters()">
           <option value="">Semua Kategori</option>
         </select>
       </div>
       <div class="d-flex align-items-center gap-2">
-        <label for="filter-date-start" class="text-muted small mb-0">Dari</label>
-        <input type="date" class="form-control form-control-sm" id="filter-date-start" onchange="applyFilters()">
+        <label for="filter-date-start" class="text-muted small mb-0 fw-medium">Dari</label>
+        <input type="date" class="form-control form-control-sm rounded-3" id="filter-date-start" onchange="applyFilters()">
       </div>
       <div class="d-flex align-items-center gap-2">
-        <label for="filter-date-end" class="text-muted small mb-0">Sampai</label>
-        <input type="date" class="form-control form-control-sm" id="filter-date-end" onchange="applyFilters()">
+        <label for="filter-date-end" class="text-muted small mb-0 fw-medium">Sampai</label>
+        <input type="date" class="form-control form-control-sm rounded-3" id="filter-date-end" onchange="applyFilters()">
       </div>
-      <button class="btn btn-sm btn-outline-secondary" onclick="resetFilters()">Reset</button>
+      <button class="btn btn-sm btn-outline-secondary rounded-3 px-3 py-1 fw-semibold" onclick="resetFilters()">Reset</button>
     </div>
 
     <!-- Transaction Table -->
@@ -418,6 +420,8 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Tom Select JS -->
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   
   <!-- Shared JS -->
   <script src="{{ asset('js/format.js') }}"></script>

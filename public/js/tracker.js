@@ -13,6 +13,82 @@ let filterCategory;
 let editCategory;
 let editSubcategory;
 
+// Tom Select instances
+let tomSelectType = null;
+let tomSelectCategory = null;
+let tomSelectFormCategory = null;
+let tomSelectFormSubcategory = null;
+let tomSelectEditCategory = null;
+let tomSelectEditSubcategory = null;
+
+function initTomSelectFilters() {
+  if (typeof TomSelect === 'undefined') return;
+
+  const typeEl = document.getElementById('filter-type');
+  if (typeEl && !typeEl.tomselect) {
+    tomSelectType = new TomSelect(typeEl, {
+      create: false,
+      controlInput: null,
+      allowEmptyOption: true,
+      placeholder: 'Semua Tipe',
+      onChange: () => applyFilters()
+    });
+  }
+
+  const catEl = document.getElementById('filter-category');
+  if (catEl && !catEl.tomselect) {
+    tomSelectCategory = new TomSelect(catEl, {
+      create: false,
+      controlInput: null,
+      allowEmptyOption: true,
+      placeholder: 'Semua Kategori',
+      onChange: () => applyFilters()
+    });
+  }
+
+  const formCatEl = document.getElementById('txn-category');
+  if (formCatEl && !formCatEl.tomselect) {
+    tomSelectFormCategory = new TomSelect(formCatEl, {
+      create: false,
+      controlInput: null,
+      allowEmptyOption: true,
+      placeholder: 'Pilih Kategori',
+      onChange: () => handleCategoryChange()
+    });
+  }
+
+  const formSubcatEl = document.getElementById('txn-subcategory');
+  if (formSubcatEl && !formSubcatEl.tomselect) {
+    tomSelectFormSubcategory = new TomSelect(formSubcatEl, {
+      create: false,
+      controlInput: null,
+      allowEmptyOption: true,
+      placeholder: 'Pilih Sub-Kategori (Opsional)'
+    });
+  }
+
+  const editCatEl = document.getElementById('edit-txn-category');
+  if (editCatEl && !editCatEl.tomselect) {
+    tomSelectEditCategory = new TomSelect(editCatEl, {
+      create: false,
+      controlInput: null,
+      allowEmptyOption: true,
+      placeholder: 'Pilih Kategori',
+      onChange: () => handleEditCategoryChange()
+    });
+  }
+
+  const editSubcatEl = document.getElementById('edit-txn-subcategory');
+  if (editSubcatEl && !editSubcatEl.tomselect) {
+    tomSelectEditSubcategory = new TomSelect(editSubcatEl, {
+      create: false,
+      controlInput: null,
+      allowEmptyOption: true,
+      placeholder: 'Pilih Sub-Kategori (Opsional)'
+    });
+  }
+}
+
 function initTracker() {
   formCategory = document.getElementById('txn-category');
   formSubcategory = document.getElementById('txn-subcategory');
@@ -21,6 +97,7 @@ function initTracker() {
   editSubcategory = document.getElementById('edit-txn-subcategory');
 
   document.getElementById('txn-date').value = getToday();
+  initTomSelectFilters();
   populateCategorySelects();
   loadTransactions();
 
@@ -36,17 +113,56 @@ function populateCategorySelects() {
   const categories = getCategories();
   
   // Clear existing
-  formCategory.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
-  filterCategory.innerHTML = '<option value="">Semua Kategori</option>';
-  editCategory.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
+  if (formCategory) formCategory.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
+  if (filterCategory) filterCategory.innerHTML = '<option value="">Semua Kategori</option>';
+  if (editCategory) editCategory.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
 
   categories.forEach(cat => {
     const isSavings = !!(cat.isSavings || cat.is_savings);
     const suffix = isSavings ? ' 💰 (Tabungan)' : '';
-    formCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
-    filterCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
-    editCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
+    if (formCategory) formCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
+    if (filterCategory) filterCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
+    if (editCategory) editCategory.innerHTML += `<option value="${cat.id}">${cat.name}${suffix}</option>`;
   });
+
+  // Sync dengan Tom Select Category jika sudah terinisialisasi
+  if (tomSelectCategory) {
+    const currentVal = tomSelectCategory.getValue();
+    tomSelectCategory.clearOptions();
+    tomSelectCategory.addOption({ value: '', text: 'Semua Kategori' });
+    categories.forEach(cat => {
+      const isSavings = !!(cat.isSavings || cat.is_savings);
+      const suffix = isSavings ? ' 💰 (Tabungan)' : '';
+      tomSelectCategory.addOption({ value: cat.id, text: `${cat.name}${suffix}` });
+    });
+    tomSelectCategory.setValue(currentVal || '', true);
+  }
+
+  // Sync dengan Tom Select Form Category
+  if (tomSelectFormCategory) {
+    const currentVal = tomSelectFormCategory.getValue();
+    tomSelectFormCategory.clearOptions();
+    tomSelectFormCategory.addOption({ value: '', text: 'Pilih Kategori' });
+    categories.forEach(cat => {
+      const isSavings = !!(cat.isSavings || cat.is_savings);
+      const suffix = isSavings ? ' 💰 (Tabungan)' : '';
+      tomSelectFormCategory.addOption({ value: cat.id, text: `${cat.name}${suffix}` });
+    });
+    tomSelectFormCategory.setValue(currentVal || '', true);
+  }
+
+  // Sync dengan Tom Select Edit Category
+  if (tomSelectEditCategory) {
+    const currentVal = tomSelectEditCategory.getValue();
+    tomSelectEditCategory.clearOptions();
+    tomSelectEditCategory.addOption({ value: '', text: 'Pilih Kategori' });
+    categories.forEach(cat => {
+      const isSavings = !!(cat.isSavings || cat.is_savings);
+      const suffix = isSavings ? ' 💰 (Tabungan)' : '';
+      tomSelectEditCategory.addOption({ value: cat.id, text: `${cat.name}${suffix}` });
+    });
+    tomSelectEditCategory.setValue(currentVal || '', true);
+  }
 }
 
 function handleTypeChange() {
@@ -61,6 +177,8 @@ function handleTypeChange() {
   if (isIncome) {
     if (catCol) catCol.classList.add('d-none');
     if (subcatCol) subcatCol.classList.add('d-none');
+    if (tomSelectFormCategory) tomSelectFormCategory.setValue('', true);
+    if (tomSelectFormSubcategory) tomSelectFormSubcategory.setValue('', true);
     if (catSelect) {
       catSelect.required = false;
       catSelect.value = '';
@@ -91,6 +209,8 @@ function handleEditTypeChange() {
       const subcatCol = subcatRow.querySelector('.col-md-6:first-child');
       if (subcatCol) subcatCol.classList.add('d-none');
     }
+    if (tomSelectEditCategory) tomSelectEditCategory.setValue('', true);
+    if (tomSelectEditSubcategory) tomSelectEditSubcategory.setValue('', true);
     if (catSelect) {
       catSelect.required = false;
       catSelect.value = '';
@@ -108,7 +228,7 @@ function handleEditTypeChange() {
 }
 
 function handleCategoryChange() {
-  const catId = formCategory.value;
+  const catId = tomSelectFormCategory ? tomSelectFormCategory.getValue() : (formCategory ? formCategory.value : '');
   updateSubcategoryDropdown(catId, formSubcategory);
 
   const cat = getCategoryById(catId);
@@ -130,7 +250,7 @@ function handleCategoryChange() {
 }
 
 function handleEditCategoryChange() {
-  const catId = editCategory.value;
+  const catId = tomSelectEditCategory ? tomSelectEditCategory.getValue() : (editCategory ? editCategory.value : '');
   updateSubcategoryDropdown(catId, editSubcategory);
 
   const cat = getCategoryById(catId);
@@ -151,16 +271,40 @@ function handleEditCategoryChange() {
 }
 
 function updateSubcategoryDropdown(categoryId, subcategorySelectElement) {
-  subcategorySelectElement.innerHTML = '<option value="">Tidak ada sub-kategori</option>';
+  if (subcategorySelectElement) {
+    subcategorySelectElement.innerHTML = '<option value="">Tidak ada sub-kategori</option>';
+  }
   
-  if (!categoryId) return;
+  const category = categoryId ? getCategoryById(categoryId) : null;
+  const hasSubcats = category && category.subcategories && category.subcategories.length > 0;
   
-  const category = getCategoryById(categoryId);
-  if (category && category.subcategories && category.subcategories.length > 0) {
+  if (subcategorySelectElement && hasSubcats) {
     subcategorySelectElement.innerHTML = '<option value="">Pilih Sub-Kategori (Opsional)</option>';
     category.subcategories.forEach(sub => {
       subcategorySelectElement.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
     });
+  }
+
+  // Sync Tom Select untuk subcategory form atau edit
+  let targetTomSelect = null;
+  if (subcategorySelectElement === formSubcategory && tomSelectFormSubcategory) {
+    targetTomSelect = tomSelectFormSubcategory;
+  } else if (subcategorySelectElement === editSubcategory && tomSelectEditSubcategory) {
+    targetTomSelect = tomSelectEditSubcategory;
+  }
+
+  if (targetTomSelect) {
+    targetTomSelect.clearOptions();
+    if (hasSubcats) {
+      targetTomSelect.addOption({ value: '', text: 'Pilih Sub-Kategori (Opsional)' });
+      category.subcategories.forEach(sub => {
+        targetTomSelect.addOption({ value: sub.id, text: sub.name });
+      });
+      targetTomSelect.setValue('', true);
+    } else {
+      targetTomSelect.addOption({ value: '', text: 'Tidak ada sub-kategori' });
+      targetTomSelect.setValue('', true);
+    }
   }
 }
 
@@ -234,7 +378,18 @@ function resetForm() {
   const typeExpense = document.getElementById('type-expense');
   if (typeExpense) typeExpense.checked = true;
   handleTypeChange();
-  formSubcategory.innerHTML = '<option value="">Tidak ada sub-kategori</option>';
+
+  if (tomSelectFormCategory) {
+    tomSelectFormCategory.setValue('', true);
+  }
+  if (tomSelectFormSubcategory) {
+    tomSelectFormSubcategory.clearOptions();
+    tomSelectFormSubcategory.addOption({ value: '', text: 'Tidak ada sub-kategori' });
+    tomSelectFormSubcategory.setValue('', true);
+  } else if (formSubcategory) {
+    formSubcategory.innerHTML = '<option value="">Tidak ada sub-kategori</option>';
+  }
+
   const savingsContainer = document.getElementById('savings-confirmation-container');
   const savingsConfirm = document.getElementById('txn-savings-confirm');
   if (savingsContainer) savingsContainer.classList.add('d-none');
@@ -250,8 +405,8 @@ async function submitTransaction() {
   const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
   const type = isIncome ? 'income' : 'expense';
   const date = document.getElementById('txn-date').value;
-  const categoryId = isIncome ? null : formCategory.value;
-  const subcategoryId = isIncome ? null : (formSubcategory.value || null);
+  const categoryId = isIncome ? null : (tomSelectFormCategory ? tomSelectFormCategory.getValue() : (formCategory ? formCategory.value : null));
+  const subcategoryId = isIncome ? null : ((tomSelectFormSubcategory ? tomSelectFormSubcategory.getValue() : (formSubcategory ? formSubcategory.value : null)) || null);
   const description = document.getElementById('txn-desc').value;
   const amount = parseRupiah(document.getElementById('txn-amount').value);
   
@@ -263,7 +418,8 @@ async function submitTransaction() {
   if (type === 'expense') {
     if (!categoryId) {
       alert('Harap pilih kategori pengeluaran.');
-      formCategory.focus();
+      if (tomSelectFormCategory) tomSelectFormCategory.focus();
+      else if (formCategory) formCategory.focus();
       return;
     }
     const cat = getCategoryById(categoryId);
@@ -614,8 +770,8 @@ function loadTransactions() {
 }
 
 function applyFilters() {
-  const typeFilter = document.getElementById('filter-type') ? document.getElementById('filter-type').value : '';
-  const catFilter = filterCategory.value;
+  const typeFilter = tomSelectType ? tomSelectType.getValue() : (document.getElementById('filter-type') ? document.getElementById('filter-type').value : '');
+  const catFilter = tomSelectCategory ? tomSelectCategory.getValue() : (filterCategory ? filterCategory.value : '');
   const dateStart = document.getElementById('filter-date-start').value;
   const dateEnd = document.getElementById('filter-date-end').value;
   
@@ -637,9 +793,19 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  const filterTypeEl = document.getElementById('filter-type');
-  if (filterTypeEl) filterTypeEl.value = '';
-  filterCategory.value = '';
+  if (tomSelectType) {
+    tomSelectType.setValue('', true);
+  } else {
+    const filterTypeEl = document.getElementById('filter-type');
+    if (filterTypeEl) filterTypeEl.value = '';
+  }
+
+  if (tomSelectCategory) {
+    tomSelectCategory.setValue('', true);
+  } else if (filterCategory) {
+    filterCategory.value = '';
+  }
+
   document.getElementById('filter-date-start').value = '';
   document.getElementById('filter-date-end').value = '';
   applyFilters();
@@ -843,11 +1009,19 @@ function openEditDialog(txnId) {
   formatInputRupiah(amountInput);
   
   if (!isIncome && txn.categoryId) {
-    editCategory.value = txn.categoryId;
+    if (tomSelectEditCategory) {
+      tomSelectEditCategory.setValue(txn.categoryId, true);
+    } else {
+      editCategory.value = txn.categoryId;
+    }
     handleEditCategoryChange();
     
     if (txn.subcategoryId) {
-      editSubcategory.value = txn.subcategoryId;
+      if (tomSelectEditSubcategory) {
+        tomSelectEditSubcategory.setValue(txn.subcategoryId, true);
+      } else {
+        editSubcategory.value = txn.subcategoryId;
+      }
     }
   }
   
@@ -864,8 +1038,8 @@ async function submitEditTransaction() {
   const type = isIncome ? 'income' : 'expense';
   const id = document.getElementById('edit-txn-id').value;
   const date = document.getElementById('edit-txn-date').value;
-  const categoryId = isIncome ? null : editCategory.value;
-  const subcategoryId = isIncome ? null : (editSubcategory.value || null);
+  const categoryId = isIncome ? null : (tomSelectEditCategory ? tomSelectEditCategory.getValue() : (editCategory ? editCategory.value : null));
+  const subcategoryId = isIncome ? null : ((tomSelectEditSubcategory ? tomSelectEditSubcategory.getValue() : (editSubcategory ? editSubcategory.value : null)) || null);
   const description = document.getElementById('edit-txn-desc').value;
   const amount = parseRupiah(document.getElementById('edit-txn-amount').value);
   
@@ -877,7 +1051,8 @@ async function submitEditTransaction() {
   if (type === 'expense') {
     if (!categoryId) {
       alert('Harap pilih kategori pengeluaran.');
-      editCategory.focus();
+      if (tomSelectEditCategory) tomSelectEditCategory.focus();
+      else if (editCategory) editCategory.focus();
       return;
     }
     const cat = getCategoryById(categoryId);

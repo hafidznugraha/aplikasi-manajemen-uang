@@ -602,6 +602,78 @@ select:user-invalid {
   }
 }
 
+/* ---------- Modern Tom Select Styling for Filters ---------- */
+.ts-wrapper.form-select-sm .ts-control,
+.ts-control {
+  min-height: 38px !important;
+  padding: 0.4rem 0.85rem !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--bk-border) !important;
+  background-color: #ffffff !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  color: var(--bk-text) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.ts-wrapper .ts-control input {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.ts-wrapper.focus .ts-control {
+  border-color: var(--bk-primary) !important;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.15) !important;
+}
+
+.ts-dropdown {
+  border-radius: 12px !important;
+  border: 1px solid var(--bk-border) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+  margin-top: 6px !important;
+  padding: 6px !important;
+  background-color: #ffffff !important;
+  z-index: 1070 !important;
+  overflow: hidden !important;
+  animation: dropdownFadeIn 0.15s ease-out forwards;
+}
+
+.ts-dropdown .ts-dropdown-content {
+  max-height: 280px !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
+
+.ts-dropdown .option {
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-size: 0.875rem !important;
+  color: var(--bk-text) !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+  background-color: #f1f5f9 !important;
+  color: var(--bk-primary) !important;
+  font-weight: 600 !important;
+}
+
+.ts-dropdown .option.selected {
+  background-color: rgba(26, 86, 219, 0.08) !important;
+  color: var(--bk-primary) !important;
+  font-weight: 600 !important;
+}
+
 /* ---------- Top Animated Loading Progress Bar ---------- */
 #top-loader {
   position: fixed;
