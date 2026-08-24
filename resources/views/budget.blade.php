@@ -73,7 +73,7 @@
           </button>
         </div>
         <div id="budget-saved-feedback" class="form-text text-success d-none mt-2">
-          <i class="bi bi-check-circle-fill"></i> Total budget berhasil disimpan ke database Supabase!
+          <i class="bi bi-check-circle-fill"></i> Total budget bulanan berhasil disimpan.
         </div>
       </div>
     </div>
