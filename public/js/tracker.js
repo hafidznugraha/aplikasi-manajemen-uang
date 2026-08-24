@@ -23,6 +23,13 @@ function initTracker() {
   document.getElementById('txn-date').value = getToday();
   populateCategorySelects();
   loadTransactions();
+
+  const addModalEl = document.getElementById('addTransactionModal');
+  if (addModalEl) {
+    addModalEl.addEventListener('hidden.bs.modal', () => {
+      resetForm();
+    });
+  }
 }
 
 function populateCategorySelects() {
@@ -327,11 +334,14 @@ async function submitTransaction() {
   
   try {
     await addTransaction(txnData, currentFile);
-    resetForm();
     
-    // Hide form collapse using Bootstrap API
-    const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('formPengeluaran'));
-    if (bsCollapse) bsCollapse.hide();
+    // Hide modal using Bootstrap API
+    const addModalEl = document.getElementById('addTransactionModal');
+    if (addModalEl) {
+      const bsModal = bootstrap.Modal.getInstance(addModalEl);
+      if (bsModal) bsModal.hide();
+    }
+    resetForm();
     
     loadTransactions();
     
@@ -354,6 +364,13 @@ let pendingOverbudget = null;
 
 function openOverbudgetModal(data) {
   pendingOverbudget = data;
+
+  // Tutup modal form transaksi jika sedang terbuka
+  const addModalEl = document.getElementById('addTransactionModal');
+  if (addModalEl) {
+    const bsModal = bootstrap.Modal.getInstance(addModalEl);
+    if (bsModal) bsModal.hide();
+  }
 
   const targetNameEl = document.getElementById('overbudget-target-cat-name');
   const deficitEl = document.getElementById('overbudget-deficit-amount');
@@ -565,10 +582,13 @@ async function confirmAndReallocate() {
       await addTransaction(pendingOverbudget.txnData, pendingOverbudget.file);
 
       closeOverbudgetDialog();
+      
+      const addModalEl = document.getElementById('addTransactionModal');
+      if (addModalEl) {
+        const bsModal = bootstrap.Modal.getInstance(addModalEl);
+        if (bsModal) bsModal.hide();
+      }
       resetForm();
-
-      const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('formPengeluaran'));
-      if (bsCollapse) bsCollapse.hide();
 
       populateCategorySelects();
       loadTransactions();

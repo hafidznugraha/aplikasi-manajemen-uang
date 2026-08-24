@@ -59,102 +59,9 @@
         <h2 class="h4 mb-1 fw-bold text-dark">Tracker Harian</h2>
         <p class="text-muted small mb-0">Catat dan pantau arus pengeluaran serta pemasukan tambahan Anda</p>
       </div>
-      <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#formPengeluaran" aria-expanded="false" aria-controls="formPengeluaran">
+      <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
         <i class="bi bi-plus-lg"></i> Tambah Transaksi
       </button>
-    </div>
-
-    <!-- Add Transaction Form Collapse -->
-    <div class="collapse mb-4" id="formPengeluaran">
-      <div class="card card-budgetku card-body border-0 shadow-sm p-4">
-        <h5 class="card-title mb-3 fw-bold text-dark" id="form-card-title">Tambah Transaksi Baru</h5>
-        <form id="add-transaction-form" onsubmit="event.preventDefault(); submitTransaction();">
-          
-          <!-- Tipe Transaksi: Pengeluaran vs Pemasukan -->
-          <div class="mb-4">
-            <label class="form-label fw-semibold text-dark small mb-2">Tipe Transaksi</label>
-            <div class="btn-group w-100" role="group" aria-label="Tipe Transaksi">
-              <input type="radio" class="btn-check" name="txn-type" id="type-expense" value="expense" checked autocomplete="off" onchange="handleTypeChange()">
-              <label class="btn btn-outline-danger fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-expense">
-                <i class="bi bi-dash-circle-fill"></i> Pengeluaran
-              </label>
-
-              <input type="radio" class="btn-check" name="txn-type" id="type-income" value="income" autocomplete="off" onchange="handleTypeChange()">
-              <label class="btn btn-outline-success fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-income">
-                <i class="bi bi-plus-circle-fill"></i> Pemasukan Tambahan
-              </label>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <label for="txn-date" class="form-label">Tanggal</label>
-              <input type="date" class="form-control" id="txn-date" required>
-            </div>
-            <div class="col-md-4" id="category-col">
-              <label for="txn-category" class="form-label" id="txn-category-label">Kategori</label>
-              <select class="form-select" id="txn-category" required onchange="handleCategoryChange()">
-                <option value="" disabled selected>Pilih Kategori</option>
-              </select>
-            </div>
-            <div class="col-md-4" id="subcategory-col">
-              <label for="txn-subcategory" class="form-label">Sub-Kategori</label>
-              <select class="form-select" id="txn-subcategory">
-                <option value="">Tidak ada sub-kategori</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label for="txn-desc" class="form-label" id="txn-desc-label">Keterangan</label>
-              <input type="text" class="form-control" id="txn-desc" placeholder="Contoh: Makan siang" required>
-            </div>
-            <div class="col-md-6">
-              <label for="txn-amount" class="form-label">Nominal</label>
-              <div class="input-group">
-                <span class="input-group-text">Rp</span>
-                <input type="text" class="form-control" id="txn-amount" placeholder="0" required oninput="formatInputRupiah(this)">
-              </div>
-            </div>
-          </div>
-
-          <!-- Konfirmasi Tabungan Dinamis -->
-          <div class="mb-3 d-none p-3 bg-success-subtle rounded border border-success-subtle" id="savings-confirmation-container">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="txn-savings-confirm">
-              <label class="form-check-label text-success-emphasis fw-semibold small" for="txn-savings-confirm">
-                <i class="bi bi-piggy-bank-fill me-1"></i> Saya mengonfirmasi bahwa ini adalah alokasi tabungan
-              </label>
-            </div>
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label">Upload Struk (Opsional)</label>
-            <div class="upload-zone p-4 text-center rounded border border-2 border-dashed" id="upload-zone" onclick="document.getElementById('txn-receipt').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-              <i class="bi bi-cloud-arrow-up fs-2 text-secondary"></i>
-              <p class="mb-1">Klik atau seret file ke sini</p>
-              <small class="text-muted">Format .jpg, .jpeg, .png (Maks 1MB)</small>
-              <input type="file" id="txn-receipt" class="d-none" accept=".jpg,.jpeg,.png" onchange="handleFileSelect(event)">
-            </div>
-            <div class="upload-preview mt-3 d-none align-items-center p-2 border rounded" id="upload-preview">
-              <img id="preview-img" src="" alt="Preview" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
-              <div class="flex-grow-1">
-                <div id="preview-filename" class="fw-medium small text-truncate" style="max-width: 200px;"></div>
-                <div id="preview-filesize" class="text-muted small"></div>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeFile(event)">
-                <i class="bi bi-x-lg"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-light" data-bs-toggle="collapse" data-bs-target="#formPengeluaran" onclick="resetForm()">Batal</button>
-            <button type="submit" class="btn btn-primary">Simpan</button>
-          </div>
-        </form>
-      </div>
     </div>
 
     <!-- Filter Bar -->
@@ -220,6 +127,109 @@
       </ul>
     </nav>
   </main>
+
+  <!-- Add Transaction Modal (Bootstrap 5 modal-lg at root body level) -->
+  <div class="modal fade" id="addTransactionModal" tabindex="-1" aria-labelledby="addTransactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header border-bottom px-4 py-3">
+          <h5 class="modal-title fw-bold text-dark" id="addTransactionModalLabel">
+            <i class="bi bi-receipt me-2 text-primary"></i>Tambah Transaksi Baru
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="resetForm()"></button>
+        </div>
+        <form id="add-transaction-form" onsubmit="event.preventDefault(); submitTransaction();">
+          <div class="modal-body px-4 py-3">
+            
+            <!-- Tipe Transaksi: Pengeluaran vs Pemasukan -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold text-dark small mb-2">Tipe Transaksi</label>
+              <div class="btn-group w-100" role="group" aria-label="Tipe Transaksi">
+                <input type="radio" class="btn-check" name="txn-type" id="type-expense" value="expense" checked autocomplete="off" onchange="handleTypeChange()">
+                <label class="btn btn-outline-danger fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-expense">
+                  <i class="bi bi-dash-circle-fill"></i> Pengeluaran
+                </label>
+
+                <input type="radio" class="btn-check" name="txn-type" id="type-income" value="income" autocomplete="off" onchange="handleTypeChange()">
+                <label class="btn btn-outline-success fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-income">
+                  <i class="bi bi-plus-circle-fill"></i> Pemasukan Tambahan
+                </label>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label for="txn-date" class="form-label fw-medium small">Tanggal</label>
+                <input type="date" class="form-control" id="txn-date" required>
+              </div>
+              <div class="col-md-4" id="category-col">
+                <label for="txn-category" class="form-label fw-medium small" id="txn-category-label">Kategori</label>
+                <select class="form-select" id="txn-category" required onchange="handleCategoryChange()">
+                  <option value="" disabled selected>Pilih Kategori</option>
+                </select>
+              </div>
+              <div class="col-md-4" id="subcategory-col">
+                <label for="txn-subcategory" class="form-label fw-medium small">Sub-Kategori</label>
+                <select class="form-select" id="txn-subcategory">
+                  <option value="">Tidak ada sub-kategori</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="txn-desc" class="form-label fw-medium small" id="txn-desc-label">Keterangan</label>
+                <input type="text" class="form-control" id="txn-desc" placeholder="Contoh: Makan siang" required>
+              </div>
+              <div class="col-md-6">
+                <label for="txn-amount" class="form-label fw-medium small">Nominal</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light">Rp</span>
+                  <input type="text" class="form-control fw-bold" id="txn-amount" placeholder="0" required oninput="formatInputRupiah(this)">
+                </div>
+              </div>
+            </div>
+
+            <!-- Konfirmasi Tabungan Dinamis -->
+            <div class="mb-3 d-none p-3 bg-success-subtle rounded border border-success-subtle" id="savings-confirmation-container">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="txn-savings-confirm">
+                <label class="form-check-label text-success-emphasis fw-semibold small" for="txn-savings-confirm">
+                  <i class="bi bi-piggy-bank-fill me-1"></i> Saya mengonfirmasi bahwa ini adalah alokasi tabungan
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label fw-medium small">Upload Struk (Opsional)</label>
+              <div class="upload-zone p-3 text-center rounded border border-2 border-dashed bg-light bg-opacity-50" id="upload-zone" onclick="document.getElementById('txn-receipt').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                <i class="bi bi-cloud-arrow-up fs-3 text-secondary"></i>
+                <p class="mb-1 fw-medium text-dark small">Klik atau seret file ke sini</p>
+                <small class="text-muted">Format .jpg, .jpeg, .png (Maks 1MB)</small>
+                <input type="file" id="txn-receipt" class="d-none" accept=".jpg,.jpeg,.png" onchange="handleFileSelect(event)">
+              </div>
+              <div class="upload-preview mt-3 d-none align-items-center p-2 border rounded" id="upload-preview">
+                <img id="preview-img" src="" alt="Preview" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                <div class="flex-grow-1">
+                  <div id="preview-filename" class="fw-medium small text-truncate" style="max-width: 200px;"></div>
+                  <div id="preview-filesize" class="text-muted small"></div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeFile(event)">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-top px-4 py-3 bg-light">
+            <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal" onclick="resetForm()">Batal</button>
+            <button type="submit" class="btn btn-primary px-4 fw-semibold">
+              <i class="bi bi-check-lg me-1"></i>Simpan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- Dialog: Receipt Preview -->
   <dialog id="receiptDialog" class="modal-budgetku rounded shadow border-0 p-0" style="max-width: 500px; width: 90%;">
