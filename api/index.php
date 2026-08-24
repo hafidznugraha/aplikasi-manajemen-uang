@@ -3,7 +3,7 @@
 /**
  * BudgetKu — Vercel Serverless Entrypoint
  * Prepares writable /tmp directory structure for Laravel compiled views
- * and bootstrap caches, then forwards the HTTP request to public/index.php.
+ * and bootstrap caches, sanitizes empty env variables, then forwards to public/index.php.
  */
 
 $_ENV['VERCEL'] = '1';
@@ -11,6 +11,25 @@ $_SERVER['VERCEL'] = '1';
 putenv('VERCEL=1');
 
 chdir(__DIR__ . '/..');
+
+// Sanitasi variabel lingkungan agar tidak bernilai string kosong ("")
+$envDefaults = [
+    'SESSION_DRIVER' => 'cookie',
+    'CACHE_STORE' => 'database',
+    'LOG_CHANNEL' => 'stderr',
+    'DB_CONNECTION' => 'pgsql',
+    'FILESYSTEM_DISK' => 'local',
+    'QUEUE_CONNECTION' => 'database',
+    'MAIL_MAILER' => 'log',
+];
+
+foreach ($envDefaults as $key => $defaultVal) {
+    if (empty($_ENV[$key]) || trim($_ENV[$key]) === '') {
+        $_ENV[$key] = $defaultVal;
+        $_SERVER[$key] = $defaultVal;
+        putenv("{$key}={$defaultVal}");
+    }
+}
 
 $tmpDirs = [
     '/tmp/storage',
