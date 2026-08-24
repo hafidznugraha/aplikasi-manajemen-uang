@@ -50,19 +50,11 @@ function renderSummaryCards(budget) {
   remainingEl.textContent = formatRupiah(remaining);
   
   const remainingCard = document.getElementById('remaining-card');
-  if (remaining < 0) {
-    remainingCard.classList.add('card-remaining', 'overbudget');
-    const iconBox = remainingCard.querySelector('.icon-box');
-    if (iconBox) {
-        iconBox.classList.remove('bg-success', 'text-success');
-        iconBox.classList.add('bg-danger', 'text-danger');
-    }
-  } else {
-    remainingCard.classList.remove('overbudget');
-    const iconBox = remainingCard.querySelector('.icon-box');
-    if (iconBox) {
-        iconBox.classList.remove('bg-danger', 'text-danger');
-        iconBox.classList.add('bg-success', 'text-success');
+  if (remainingCard) {
+    if (remaining < 0) {
+      remainingCard.classList.add('overbudget');
+    } else {
+      remainingCard.classList.remove('overbudget');
     }
   }
 }

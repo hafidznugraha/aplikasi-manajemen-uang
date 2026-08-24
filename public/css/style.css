@@ -108,47 +108,40 @@ h1, h2, h3, h4, h5, h6 {
 /* Summary Cards (Dashboard) */
 .summary-card {
   border-radius: var(--bk-card-radius);
-  padding: 1.5rem;
-  color: #fff;
+  padding: 1.25rem 1.5rem;
+  color: #ffffff;
   position: relative;
   overflow: hidden;
+  border: none;
 }
 
-.summary-card .summary-icon {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  font-size: 2rem;
-  opacity: 0.25;
+.summary-card .icon-box {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.summary-card .summary-label {
-  font-size: 0.85rem;
-  font-weight: 500;
-  opacity: 0.9;
-  margin-bottom: 0.25rem;
-}
-
-.summary-card .summary-value {
-  font-size: 1.65rem;
-  font-weight: 700;
-  line-height: 1.2;
+.summary-card:hover .icon-box {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 0.3) !important;
 }
 
 .summary-card.card-budget {
-  background: linear-gradient(135deg, var(--bk-primary), var(--bk-primary-dark));
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
 }
 
 .summary-card.card-spent {
-  background: linear-gradient(135deg, var(--bk-warning), #b45309);
+  background: linear-gradient(135deg, #ea580c, #c2410c);
 }
 
 .summary-card.card-remaining {
-  background: linear-gradient(135deg, var(--bk-success), #047857);
+  background: linear-gradient(135deg, #059669, #047857);
 }
 
 .summary-card.card-remaining.overbudget {
-  background: linear-gradient(135deg, var(--bk-danger), #b91c1c);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
 }
 
 /* ---------- Progress Bars (Budget Tracking) ---------- */

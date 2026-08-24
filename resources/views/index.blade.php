@@ -68,42 +68,47 @@
     <div id="dashboard-content" class="d-none">
       <!-- 3 Summary Cards -->
       <div class="row g-3 mb-4">
+        <!-- Card 1: Total Budget -->
         <div class="col-md-4">
-          <div class="card card-budgetku summary-card card-budget p-3">
+          <div class="card card-budgetku summary-card card-budget text-white p-3 border-0 shadow-sm">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">Total Budget</h6>
-                <h4 class="mb-0" id="total-budget">Rp 0</h4>
-                <small class="text-success fw-semibold d-none" id="total-budget-income-note">+ Rp 0 dari pemasukan</small>
+                <h6 class="text-white text-opacity-75 mb-1 fw-medium small">Total Budget</h6>
+                <h4 class="mb-0 text-white fw-bold" id="total-budget">Rp 0</h4>
+                <small class="text-white text-opacity-75 fw-medium d-none" id="total-budget-income-note">+ Rp 0 dari pemasukan</small>
               </div>
-              <div class="icon-box bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+              <div class="icon-box bg-white bg-opacity-20 text-white p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
                 <i class="bi bi-piggy-bank fs-4"></i>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Card 2: Total Pengeluaran -->
         <div class="col-md-4">
-          <div class="card card-budgetku summary-card card-spent p-3">
+          <div class="card card-budgetku summary-card card-spent text-white p-3 border-0 shadow-sm">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">Total Pengeluaran</h6>
-                <h4 class="mb-0" id="total-spent">Rp 0</h4>
+                <h6 class="text-white text-opacity-75 mb-1 fw-medium small">Total Pengeluaran</h6>
+                <h4 class="mb-0 text-white fw-bold" id="total-spent">Rp 0</h4>
               </div>
-              <div class="icon-box bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
+              <div class="icon-box bg-white bg-opacity-20 text-white p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
                 <i class="bi bi-cart-dash fs-4"></i>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Card 3: Sisa Budget -->
         <div class="col-md-4">
-          <div class="card card-budgetku summary-card card-remaining p-3" id="remaining-card">
+          <div class="card card-budgetku summary-card card-remaining text-white p-3 border-0 shadow-sm" id="remaining-card">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">Sisa Budget</h6>
-                <h4 class="mb-0" id="total-remaining">Rp 0</h4>
+                <h6 class="text-white text-opacity-75 mb-1 fw-medium small" id="remaining-card-label">Sisa Budget</h6>
+                <h4 class="mb-0 text-white fw-bold" id="total-remaining">Rp 0</h4>
               </div>
-              <div class="icon-box bg-success bg-opacity-10 text-success p-3 rounded-circle">
-                <i class="bi bi-wallet2 fs-4"></i>
+              <div class="icon-box bg-white bg-opacity-20 text-white p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                <i class="bi bi-wallet2 fs-4" id="remaining-card-icon"></i>
               </div>
             </div>
           </div>
