@@ -4,6 +4,33 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+// Deteksi apakah sedang berjalan di lingkungan Serverless Vercel
+$isVercel = isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || (is_dir('/tmp') && is_writable('/tmp'));
+
+if ($isVercel) {
+    $storagePath = '/tmp/storage';
+    $bootstrapPath = '/tmp/bootstrap';
+    
+    $tmpDirs = [
+        $storagePath,
+        $storagePath . '/framework',
+        $storagePath . '/framework/views',
+        $storagePath . '/framework/cache',
+        $storagePath . '/framework/cache/data',
+        $storagePath . '/framework/sessions',
+        $storagePath . '/logs',
+        $storagePath . '/app',
+        $bootstrapPath,
+        $bootstrapPath . '/cache',
+    ];
+    
+    foreach ($tmpDirs as $dir) {
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+    }
+}
+
 $app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -19,25 +46,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         //
     })->create();
 
-// Arahkan storage path ke /tmp/storage saat berjalan di serverless Vercel
-if (isset($_ENV['VERCEL']) || isset($_SERVER['VERCEL']) || (is_dir('/tmp') && is_writable('/tmp'))) {
-    $storagePath = '/tmp/storage';
-    $subDirs = [
-        $storagePath,
-        $storagePath . '/framework',
-        $storagePath . '/framework/views',
-        $storagePath . '/framework/cache',
-        $storagePath . '/framework/cache/data',
-        $storagePath . '/framework/sessions',
-        $storagePath . '/logs',
-        $storagePath . '/app',
-    ];
-    foreach ($subDirs as $dir) {
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
-        }
-    }
-    $app->useStoragePath($storagePath);
+// Arahkan storage dan bootstrap cache path ke /tmp di Vercel
+if ($isVercel) {
+    $app->useStoragePath('/tmp/storage');
+    $app->useBootstrapPath('/tmp/bootstrap');
 }
 
 return $app;

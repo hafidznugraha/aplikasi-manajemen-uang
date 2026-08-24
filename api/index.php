@@ -3,33 +3,44 @@
 /**
  * BudgetKu — Vercel Serverless Entrypoint
  * Prepares writable /tmp directory structure for Laravel compiled views
- * and forwards the HTTP request to public/index.php.
+ * and bootstrap caches, then forwards the HTTP request to public/index.php.
  */
+
+$_ENV['VERCEL'] = '1';
+$_SERVER['VERCEL'] = '1';
+putenv('VERCEL=1');
 
 chdir(__DIR__ . '/..');
 
-$tmpStorage = '/tmp/storage';
-$tmpDirectories = [
-    $tmpStorage,
-    $tmpStorage . '/framework',
-    $tmpStorage . '/framework/views',
-    $tmpStorage . '/framework/cache',
-    $tmpStorage . '/framework/cache/data',
-    $tmpStorage . '/framework/sessions',
-    $tmpStorage . '/logs',
-    $tmpStorage . '/app',
+$tmpDirs = [
+    '/tmp/storage',
+    '/tmp/storage/framework',
+    '/tmp/storage/framework/views',
+    '/tmp/storage/framework/cache',
+    '/tmp/storage/framework/cache/data',
+    '/tmp/storage/framework/sessions',
+    '/tmp/storage/logs',
+    '/tmp/storage/app',
+    '/tmp/bootstrap',
+    '/tmp/bootstrap/cache',
 ];
 
-foreach ($tmpDirectories as $dir) {
+foreach ($tmpDirs as $dir) {
     if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
+        @mkdir($dir, 0777, true);
     }
 }
 
-// Set environment path untuk compiler blade view Laravel
-putenv("VIEW_COMPILED_PATH={$tmpStorage}/framework/views");
-$_ENV['VIEW_COMPILED_PATH'] = "{$tmpStorage}/framework/views";
-$_SERVER['VIEW_COMPILED_PATH'] = "{$tmpStorage}/framework/views";
+// Set environment path untuk compiler blade view Laravel & bootstrap cache
+putenv("VIEW_COMPILED_PATH=/tmp/storage/framework/views");
+putenv("APP_CONFIG_CACHE=/tmp/bootstrap/cache/config.php");
+putenv("APP_EVENTS_CACHE=/tmp/bootstrap/cache/events.php");
+putenv("APP_PACKAGES_CACHE=/tmp/bootstrap/cache/packages.php");
+putenv("APP_ROUTES_CACHE=/tmp/bootstrap/cache/routes.php");
+putenv("APP_SERVICES_CACHE=/tmp/bootstrap/cache/services.php");
+
+$_ENV['VIEW_COMPILED_PATH'] = "/tmp/storage/framework/views";
+$_SERVER['VIEW_COMPILED_PATH'] = "/tmp/storage/framework/views";
 
 try {
     require __DIR__ . '/../public/index.php';
