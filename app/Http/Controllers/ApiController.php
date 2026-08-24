@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OtpVerificationMail;
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\Subcategory;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Services\SupabaseStorageService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 
 class ApiController extends Controller
 {
@@ -21,28 +26,59 @@ class ApiController extends Controller
     }
 
     /**
+     * Dapatkan numeric user_id dari request jika ada
+     */
+    protected function getUserIdFromRequest(Request $request): ?int
+    {
+        $userId = $request->input('user_id', $request->query('user_id'));
+        if ($userId && is_numeric($userId)) {
+            return (int) $userId;
+        }
+        return null;
+    }
+
+    /**
      * Endpoint terpadu untuk sinkronisasi kilat seluruh data aplikasi dalam 1 request
      */
     public function getSyncData(Request $request): JsonResponse
     {
         $month = $request->query('month', now()->format('Y-m'));
+        $userId = $this->getUserIdFromRequest($request);
 
-        $budget = Budget::with(['categories.subcategories'])
-            ->firstOrCreate(
-                ['month' => $month],
-                ['total_budget' => 0]
-            );
+        $budgetQuery = Budget::with(['categories.subcategories'])->where('month', $month);
+        if ($userId !== null) {
+            $budgetQuery->where('user_id', $userId);
+        }
+        $budget = $budgetQuery->first();
 
-        $transactions = Transaction::where('budget_id', $budget->id)
-            ->orderBy('date', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if (!$budget) {
+            $budget = new Budget([
+                'month' => $month,
+                'total_budget' => 0,
+                'user_id' => $userId,
+            ]);
+            if ($userId !== null) {
+                $budget->save();
+            }
+        }
 
-        $archives = Budget::with(['categories.subcategories', 'transactions'])
-            ->where('month', '!=', $month)
-            ->orderBy('month', 'desc')
-            ->limit(6)
-            ->get();
+        $txnQuery = Transaction::query();
+        if ($budget->id) {
+            $txnQuery->where('budget_id', $budget->id);
+        } else {
+            $txnQuery->whereRaw('1 = 0');
+        }
+        if ($userId !== null) {
+            $txnQuery->where('user_id', $userId);
+        }
+        $transactions = $txnQuery->orderBy('date', 'desc')->orderBy('created_at', 'desc')->get();
+
+        $archiveQuery = Budget::with(['categories.subcategories', 'transactions'])
+            ->where('month', '!=', $month);
+        if ($userId !== null) {
+            $archiveQuery->where('user_id', $userId);
+        }
+        $archives = $archiveQuery->orderBy('month', 'desc')->limit(6)->get();
 
         return response()->json([
             'budget' => [
@@ -131,12 +167,24 @@ class ApiController extends Controller
     public function getBudget(Request $request): JsonResponse
     {
         $month = $request->query('month', now()->format('Y-m'));
+        $userId = $this->getUserIdFromRequest($request);
 
-        $budget = Budget::with(['categories.subcategories'])
-            ->firstOrCreate(
-                ['month' => $month],
-                ['total_budget' => 0]
-            );
+        $budgetQuery = Budget::with(['categories.subcategories'])->where('month', $month);
+        if ($userId !== null) {
+            $budgetQuery->where('user_id', $userId);
+        }
+        $budget = $budgetQuery->first();
+
+        if (!$budget) {
+            $budget = new Budget([
+                'month' => $month,
+                'total_budget' => 0,
+                'user_id' => $userId,
+            ]);
+            if ($userId !== null) {
+                $budget->save();
+            }
+        }
 
         $categoriesFormatted = $budget->categories->map(function ($cat) {
             return [
@@ -175,9 +223,15 @@ class ApiController extends Controller
 
         $month = $request->input('month', now()->format('Y-m'));
         $amount = (int) $request->input('amount');
+        $userId = $this->getUserIdFromRequest($request);
+
+        $match = ['month' => $month];
+        if ($userId !== null) {
+            $match['user_id'] = $userId;
+        }
 
         $budget = Budget::updateOrCreate(
-            ['month' => $month],
+            $match,
             ['total_budget' => $amount]
         );
 
@@ -201,8 +255,15 @@ class ApiController extends Controller
         ]);
 
         $month = $request->input('month', now()->format('Y-m'));
+        $userId = $this->getUserIdFromRequest($request);
+
+        $match = ['month' => $month];
+        if ($userId !== null) {
+            $match['user_id'] = $userId;
+        }
+
         $budget = Budget::firstOrCreate(
-            ['month' => $month],
+            $match,
             ['total_budget' => 0]
         );
 
@@ -327,14 +388,23 @@ class ApiController extends Controller
     public function getTransactions(Request $request): JsonResponse
     {
         $month = $request->query('month', now()->format('Y-m'));
-        $budget = Budget::where('month', $month)->first();
+        $userId = $this->getUserIdFromRequest($request);
+
+        $budgetQuery = Budget::where('month', $month);
+        if ($userId !== null) {
+            $budgetQuery->where('user_id', $userId);
+        }
+        $budget = $budgetQuery->first();
 
         if (!$budget) {
             return response()->json([]);
         }
 
-        $transactions = Transaction::where('budget_id', $budget->id)
-            ->orderBy('date', 'desc')
+        $txnQuery = Transaction::where('budget_id', $budget->id);
+        if ($userId !== null) {
+            $txnQuery->where('user_id', $userId);
+        }
+        $transactions = $txnQuery->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -364,6 +434,7 @@ class ApiController extends Controller
     public function addTransaction(Request $request): JsonResponse
     {
         $type = $request->input('type', 'expense');
+        $userId = $this->getUserIdFromRequest($request);
 
         $rules = [
             'date' => 'required|date',
@@ -386,8 +457,13 @@ class ApiController extends Controller
         $request->validate($rules);
 
         $month = $request->input('month', Carbon::parse($request->input('date'))->format('Y-m'));
+        $match = ['month' => $month];
+        if ($userId !== null) {
+            $match['user_id'] = $userId;
+        }
+
         $budget = Budget::firstOrCreate(
-            ['month' => $month],
+            $match,
             ['total_budget' => 0]
         );
 
@@ -402,6 +478,7 @@ class ApiController extends Controller
         $isSystem = filter_var($request->input('is_system', $request->input('isSystem', false)), FILTER_VALIDATE_BOOLEAN);
 
         $transaction = Transaction::create([
+            'user_id' => $userId,
             'budget_id' => $budget->id,
             'type' => $type,
             'is_system' => $isSystem,
@@ -558,5 +635,390 @@ class ApiController extends Controller
         });
 
         return response()->json($archive);
+    }
+
+    /**
+     * Kirim Kode OTP Verifikasi Pendaftaran ke Email Asli Pengguna
+     */
+    public function sendOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $email = strtolower(trim($request->input('email')));
+        $name = trim($request->input('name'));
+        $password = $request->input('password');
+
+        // 1. Cek apakah email sudah terdaftar di database Supabase
+        if (User::where('email', $email)->exists()) {
+            return response()->json([
+                'message' => 'Alamat email ini sudah terdaftar. Silakan gunakan email lain atau langsung masuk ke akun Anda.'
+            ], 422);
+        }
+
+        // 2. Generate 6-digit numeric OTP & simpan di Cache (10 menit)
+        $otp = (string) random_int(100000, 999999);
+
+        Cache::put("reg_otp_{$email}", [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'otp' => $otp,
+            'created_at' => now()->timestamp,
+        ], now()->addMinutes(10));
+
+        // 3. Kirim Email OTP Resmi ke Inbox Pengguna via Supabase Auth Mailer
+        $supabaseUrl = config('services.supabase.url', env('SUPABASE_URL', 'https://dmhifcfsloncgjrxzvnl.supabase.co'));
+        $anonKey = config('services.supabase.anon_key', env('SUPABASE_ANON_KEY', 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl'));
+
+        $emailSent = false;
+        try {
+            $ch = curl_init("{$supabaseUrl}/auth/v1/otp");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'apikey: ' . $anonKey,
+                'Authorization: Bearer ' . $anonKey,
+                'Content-Type: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+                'email' => $email,
+                'create_user' => true,
+            ]));
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                $emailSent = true;
+            }
+        } catch (\Throwable $e) {
+            \Log::error("Supabase Auth OTP delivery error: " . $e->getMessage());
+        }
+
+        // Juga coba kirim via Laravel Mail jika driver SMTP aktif
+        try {
+            Mail::to($email)->send(new OtpVerificationMail($name, $otp));
+        } catch (\Throwable $e) {
+            \Log::error("Laravel Mail OTP error: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Kode OTP telah dikirimkan ke kotak masuk email {$email}.",
+            'email' => $email,
+        ]);
+    }
+
+    /**
+     * Verifikasi Kode OTP dan Buat Akun Baru di Database Supabase
+     */
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|string|email',
+            'otp' => 'required|string|min:6|max:8',
+        ]);
+
+        $email = strtolower(trim($request->input('email')));
+        $otp = trim($request->input('otp'));
+
+        $cached = Cache::get("reg_otp_{$email}");
+
+        if (!$cached) {
+            return response()->json([
+                'message' => 'Kode OTP telah kadaluarsa atau tidak ditemukan. Silakan kirim ulang kode OTP.'
+            ], 422);
+        }
+
+        $isValid = false;
+
+        // 1. Verifikasi kecocokan dengan Cache lokal
+        if ($cached['otp'] === $otp) {
+            $isValid = true;
+        } else {
+            // 2. Verifikasi kecocokan dengan Supabase Auth OTP
+            $supabaseUrl = config('services.supabase.url', env('SUPABASE_URL', 'https://dmhifcfsloncgjrxzvnl.supabase.co'));
+            $anonKey = config('services.supabase.anon_key', env('SUPABASE_ANON_KEY', 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl'));
+
+            $ch = curl_init("{$supabaseUrl}/auth/v1/verify");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'apikey: ' . $anonKey,
+                'Authorization: Bearer ' . $anonKey,
+                'Content-Type: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+                'type' => 'email',
+                'email' => $email,
+                'token' => $otp,
+            ]));
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                $isValid = true;
+            }
+        }
+
+        if (!$isValid) {
+            return response()->json([
+                'message' => 'Kode OTP yang Anda masukkan salah. Silakan periksa kembali email Anda.'
+            ], 422);
+        }
+
+        // Cek duplikasi akun sebelum insert
+        if (User::where('email', $email)->exists()) {
+            Cache::forget("reg_otp_{$email}");
+            return response()->json([
+                'message' => 'Alamat email ini sudah terdaftar. Silakan langsung masuk ke akun Anda.'
+            ], 422);
+        }
+
+        // Buat User di database Supabase (Password otomatis di-hash Bcrypt oleh model User)
+        $user = User::create([
+            'name' => $cached['name'],
+            'email' => $email,
+            'password' => $cached['password'],
+        ]);
+
+        Cache::forget("reg_otp_{$email}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pendaftaran akun berhasil!',
+            'id' => (string) $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+        ], 201);
+    }
+
+    /**
+     * Kirim Ulang Kode OTP ke Email dengan Jeda 60 Detik
+     */
+    public function resendOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|string|email',
+        ]);
+
+        $email = strtolower(trim($request->input('email')));
+        $cached = Cache::get("reg_otp_{$email}");
+
+        if (!$cached) {
+            return response()->json([
+                'message' => 'Sesi pendaftaran telah berakhir. Silakan isi kembali formulir pendaftaran.'
+            ], 422);
+        }
+
+        // Cek cooldown 60 detik
+        if (isset($cached['last_sent_at']) && (now()->timestamp - $cached['last_sent_at']) < 60) {
+            $remaining = 60 - (now()->timestamp - $cached['last_sent_at']);
+            return response()->json([
+                'message' => "Harap tunggu {$remaining} detik sebelum meminta kode baru."
+            ], 429);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $cached['otp'] = $otp;
+        $cached['last_sent_at'] = now()->timestamp;
+
+        Cache::put("reg_otp_{$email}", $cached, now()->addMinutes(10));
+
+        // Kirim via Supabase Auth
+        $supabaseUrl = config('services.supabase.url', env('SUPABASE_URL', 'https://dmhifcfsloncgjrxzvnl.supabase.co'));
+        $anonKey = config('services.supabase.anon_key', env('SUPABASE_ANON_KEY', 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl'));
+
+        try {
+            $ch = curl_init("{$supabaseUrl}/auth/v1/otp");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'apikey: ' . $anonKey,
+                'Authorization: Bearer ' . $anonKey,
+                'Content-Type: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+                'email' => $email,
+                'create_user' => true,
+            ]));
+            curl_exec($ch);
+            curl_close($ch);
+        } catch (\Throwable $e) {
+            \Log::error("Supabase resend OTP error: " . $e->getMessage());
+        }
+
+        try {
+            Mail::to($email)->send(new OtpVerificationMail($cached['name'], $otp));
+        } catch (\Throwable $e) {
+            \Log::error("Laravel Mail resend error: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Kode OTP baru telah dikirimkan ke kotak masuk email {$email}.",
+        ]);
+    }
+
+    /**
+     * Registrasi user baru langsung ke Supabase dengan kata sandi ter-hash (Bcrypt) - Fallback
+     */
+    public function register(Request $request): JsonResponse
+    {
+        return $this->sendOtp($request);
+    }
+
+    /**
+     * Autentikasi user dari database Supabase dengan verifikasi Hash Bcrypt
+     */
+    public function login(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        $email = strtolower(trim($request->input('email')));
+        $password = $request->input('password');
+
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Email atau kata sandi yang Anda masukkan salah. Silakan periksa kembali.'
+            ], 401);
+        }
+
+        $isValid = false;
+        if (Hash::check($password, $user->password)) {
+            $isValid = true;
+        } elseif ($user->password === $password) {
+            // Re-hash jika sebelumnya masih plain text
+            $user->password = $password;
+            $user->save();
+            $isValid = true;
+        }
+
+        if (!$isValid) {
+            return response()->json([
+                'message' => 'Email atau kata sandi yang Anda masukkan salah. Silakan periksa kembali.'
+            ], 401);
+        }
+
+        return response()->json([
+            'id' => (string) $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+        ]);
+    }
+
+    /**
+     * Update kata sandi pengguna di database Supabase (Bcrypt)
+     */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => 'required|string|min:6',
+            'user_id' => 'nullable',
+            'email' => 'nullable|string|email',
+        ]);
+
+        $newPassword = $request->input('password');
+        $userId = $this->getUserIdFromRequest($request);
+        $email = strtolower(trim($request->input('email', '')));
+
+        $user = null;
+        if ($userId) {
+            $user = User::find($userId);
+        }
+        if (!$user && $email) {
+            $user = User::where('email', $email)->first();
+        }
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Pengguna tidak ditemukan atau sesi telah berakhir.'
+            ], 404);
+        }
+
+        $user->password = $newPassword; // Model User automatically hashes it with Bcrypt
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kata sandi berhasil diperbarui!',
+        ]);
+    }
+
+    /**
+     * Kirim email reset password via Supabase Auth
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|string|email',
+        ]);
+
+        $email = strtolower(trim($request->input('email')));
+
+        // Kirim recovery request ke Supabase Auth
+        $supabaseUrl = config('services.supabase.url', env('SUPABASE_URL', 'https://dmhifcfsloncgjrxzvnl.supabase.co'));
+        $anonKey = config('services.supabase.anon_key', env('SUPABASE_ANON_KEY', 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl'));
+
+        try {
+            $redirectUrl = urlencode('http://127.0.0.1:8000/reset-password.html');
+            $ch = curl_init("{$supabaseUrl}/auth/v1/recover?redirect_to={$redirectUrl}");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'apikey: ' . $anonKey,
+                'Authorization: Bearer ' . $anonKey,
+                'Content-Type: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+                'email' => $email,
+            ]));
+            curl_exec($ch);
+            curl_close($ch);
+        } catch (\Throwable $e) {
+            \Log::error("Supabase Auth recover error: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jika email terdaftar, tautan reset telah dikirim ke kotak masuk Anda.'
+        ]);
+    }
+
+    /**
+     * Reset kata sandi pengguna di tabel public.users
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => 'required|string|min:6',
+            'email' => 'nullable|string|email',
+        ]);
+
+        $newPassword = $request->input('password');
+        $email = strtolower(trim($request->input('email', '')));
+
+        if ($email) {
+            $user = User::where('email', $email)->first();
+            if ($user) {
+                $user->password = $newPassword; // Otomatis Bcrypt
+                $user->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kata sandi berhasil diperbarui!'
+        ]);
     }
 }

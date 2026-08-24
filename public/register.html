@@ -13,78 +13,155 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Custom CSS -->
   <link href="css/style.css" rel="stylesheet">
+  <style>
+    .otp-digit {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 44px;
+      height: 52px;
+      border-radius: 8px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 0;
+      transition: all 0.2s ease;
+    }
+    .otp-digit:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+  </style>
 </head>
-<body style="background-color: #f8fafc; font-family: 'Inter', sans-serif;">
+<body class="auth-page bg-light d-flex align-items-center justify-content-center min-vh-100 p-3" style="font-family: 'Inter', sans-serif;">
 
-  <div class="min-vh-100 d-flex align-items-center justify-content-center px-3 py-5">
-    <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white" style="max-width: 460px; width: 100%;">
+  <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white w-100" style="max-width: 480px;">
       
-      <!-- Brand Header -->
-      <div class="text-center mb-4">
-        <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 56px; height: 56px;">
-          <i class="bi bi-wallet2 fs-3"></i>
+      <!-- ================= STEP 1: FORM PENDAFTARAN ================= -->
+      <div id="register-step-1">
+        <!-- Brand Header -->
+        <div class="text-center mb-4">
+          <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 56px; height: 56px;">
+            <i class="bi bi-wallet2 fs-3"></i>
+          </div>
+          <h3 class="fw-bold text-dark mb-1">BudgetKu</h3>
+          <p class="text-muted small mb-0">Buat akun baru untuk mulai mencatat keuangan</p>
         </div>
-        <h3 class="fw-bold text-dark mb-1">BudgetKu</h3>
-        <p class="text-muted small mb-0">Buat akun baru untuk mulai mencatat keuangan</p>
+
+        <!-- Register Form -->
+        <form id="register-form" onsubmit="return handleRegisterSubmit(event);">
+          <!-- Full Name Input -->
+          <div class="mb-3">
+            <label for="register-name" class="form-label fw-medium text-dark small">Nama Lengkap</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
+              <input type="text" class="form-control border-start-0 ps-0" id="register-name" placeholder="John Doe" required autocomplete="name">
+            </div>
+          </div>
+
+          <!-- Email Input -->
+          <div class="mb-3">
+            <label for="register-email" class="form-label fw-medium text-dark small">Alamat Email</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
+              <input type="email" class="form-control border-start-0 ps-0" id="register-email" placeholder="nama@email.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div class="mb-3">
+            <label for="register-password" class="form-label fw-medium text-dark small">Kata Sandi</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
+              <input type="password" class="form-control border-start-0 ps-0" id="register-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password">
+            </div>
+          </div>
+
+          <!-- Password Confirmation Input -->
+          <div class="mb-4">
+            <label for="register-password-confirm" class="form-label fw-medium text-dark small">Konfirmasi Kata Sandi</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-shield-check"></i></span>
+              <input type="password" class="form-control border-start-0 ps-0" id="register-password-confirm" placeholder="Ulangi kata sandi" required minlength="6" autocomplete="new-password">
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-envelope-arrow-up"></i> Daftar & Dapatkan OTP
+          </button>
+        </form>
+
+        <!-- Login Link -->
+        <div class="text-center mt-4 pt-2 border-top">
+          <p class="text-muted small mb-0">
+            Sudah punya akun? <a href="login.html" class="text-primary fw-semibold text-decoration-none">Masuk di sini</a>
+          </p>
+        </div>
       </div>
 
-      <!-- Register Form -->
-      <form id="register-form" onsubmit="return handleRegisterSubmit(event);">
-        <!-- Full Name Input -->
-        <div class="mb-3">
-          <label for="register-name" class="form-label fw-medium text-dark small">Nama Lengkap</label>
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
-            <input type="text" class="form-control border-start-0 ps-0" id="register-name" placeholder="John Doe" required autocomplete="name">
+      <!-- ================= STEP 2: VERIFIKASI KODE OTP ================= -->
+      <div id="register-step-2" class="d-none">
+        <!-- OTP Header -->
+        <div class="text-center mb-4">
+          <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 56px; height: 56px;">
+            <i class="bi bi-shield-lock-fill fs-3"></i>
+          </div>
+          <h4 class="fw-bold text-dark mb-1">Verifikasi Email</h4>
+          <p class="text-muted small mb-2">Kami telah mengirimkan 8 digit kode OTP ke:</p>
+          <div class="badge bg-light text-dark border px-3 py-2 fs-6 fw-semibold text-truncate d-inline-block mw-100" id="otp-target-email-badge">
+            email@domain.com
           </div>
         </div>
 
-        <!-- Email Input -->
-        <div class="mb-3">
-          <label for="register-email" class="form-label fw-medium text-dark small">Alamat Email</label>
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
-            <input type="email" class="form-control border-start-0 ps-0" id="register-email" placeholder="nama@email.com" required autocomplete="email">
+        <!-- Form OTP -->
+        <form id="otp-verify-form" onsubmit="return handleOtpVerifySubmit(event);">
+          <div class="mb-4">
+            <label class="form-label fw-medium text-dark small text-center w-100">Masukkan 8 Digit Kode OTP</label>
+            <div class="d-flex justify-content-between gap-1 gap-sm-2 mb-4" id="otp-inputs-container">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required data-index="0">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="1">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="2">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="3">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="4">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="5">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="6">
+              <input type="text" class="form-control otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]*" required data-index="7">
+            </div>
           </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="btn-verify-otp" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-check2-circle"></i> Verifikasi & Buat Akun
+          </button>
+        </form>
+
+        <!-- Resend OTP & Timer -->
+        <div class="text-center mt-3">
+          <span id="otp-timer-text" class="text-muted small">
+            Kirim ulang kode dalam <strong id="otp-timer-count" class="text-primary">00:59</strong>
+          </span>
+          <button type="button" id="btn-resend-otp" class="btn btn-link p-0 text-primary text-decoration-none fw-semibold small d-none" onclick="handleResendOtp()">
+            <i class="bi bi-arrow-clockwise me-1"></i> Kirim Ulang Kode OTP
+          </button>
         </div>
 
-        <!-- Password Input -->
-        <div class="mb-3">
-          <label for="register-password" class="form-label fw-medium text-dark small">Kata Sandi</label>
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
-            <input type="password" class="form-control border-start-0 ps-0" id="register-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password">
-          </div>
+        <!-- Back to Step 1 Button -->
+        <div class="text-center mt-4 pt-2 border-top">
+          <button type="button" class="btn btn-link text-muted p-0 text-decoration-none small" onclick="goToStep1()">
+            <i class="bi bi-arrow-left me-1"></i> Ubah Data / Kembali
+          </button>
         </div>
-
-        <!-- Password Confirmation Input -->
-        <div class="mb-4">
-          <label for="register-password-confirm" class="form-label fw-medium text-dark small">Konfirmasi Kata Sandi</label>
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-shield-check"></i></span>
-            <input type="password" class="form-control border-start-0 ps-0" id="register-password-confirm" placeholder="Ulangi kata sandi" required minlength="6" autocomplete="new-password">
-          </div>
-        </div>
-
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
-          <i class="bi bi-person-plus"></i> Daftar
-        </button>
-      </form>
-
-      <!-- Login Link -->
-      <div class="text-center mt-4 pt-2 border-top">
-        <p class="text-muted small mb-0">
-          Sudah punya akun? <a href="login.html" class="text-primary fw-semibold text-decoration-none">Masuk di sini</a>
-        </p>
       </div>
 
     </div>
-  </div>
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Auth & Register JS -->
+  <!-- Modal Alert & Supabase JS SDK -->
+  <script src="js/modal-alert.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase Connection & Auth JS -->
+  <script src="js/supabase.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/register.js"></script>
 </body>

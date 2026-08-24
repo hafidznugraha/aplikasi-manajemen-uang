@@ -93,9 +93,11 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 function detectPage() {
   const path = window.location.pathname.toLowerCase();
+  if (path.includes('profile')) return 'profile';
   if (path.includes('budget')) return 'budget';
   if (path.includes('tracker')) return 'tracker';
   if (path.includes('arsip')) return 'arsip';
+  if (path.includes('login') || path.includes('register')) return 'auth';
   return 'dashboard';
 }
 
@@ -107,6 +109,7 @@ function setActiveNavLink() {
   const navLinks = document.querySelectorAll('.navbar-budgetku .nav-link');
   navLinks.forEach((link) => {
     link.classList.remove('active');
+    link.removeAttribute('aria-current');
     const href = link.getAttribute('href') || '';
     if (
       (page === 'dashboard' && (href.includes('dashboard') || href.includes('index') || href === '/' || href === './')) ||
@@ -115,6 +118,7 @@ function setActiveNavLink() {
       (page === 'arsip' && href.includes('arsip'))
     ) {
       link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
     }
   });
 }

@@ -67,6 +67,12 @@
                 <p class="fw-bold small text-dark mb-0 text-truncate" id="navbar-user-email">user@test.com</p>
               </li>
               <li>
+                <a class="dropdown-item rounded-2 d-flex align-items-center gap-2 py-2 text-dark" href="{{ url('/profile') }}">
+                  <i class="bi bi-person-gear text-primary"></i> Profil Saya
+                </a>
+              </li>
+              <li><hr class="dropdown-divider my-1"></li>
+              <li>
                 <a class="dropdown-item text-danger rounded-2 d-flex align-items-center gap-2 py-2" href="#" onclick="handleLogout(event)">
                   <i class="bi bi-box-arrow-right"></i> Keluar
                 </a>
@@ -455,6 +461,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   
   <!-- Shared JS -->
+  <script src="{{ asset('js/modal-alert.js') }}"></script>
   <script src="{{ asset('js/format.js') }}"></script>
   <script src="{{ asset('js/storage.js') }}"></script>
   <script src="{{ asset('js/tracker.js') }}"></script>

@@ -26,11 +26,22 @@
 }
 
 /* ---------- Global ---------- */
+html {
+  overflow-y: auto;
+}
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--bk-bg);
   color: var(--bk-text);
-  padding-top: 72px; /* navbar height offset */
+  padding-top: 72px; /* navbar height offset for main app */
+  overflow-y: auto;
+}
+
+body.auth-page,
+.auth-page {
+  padding-top: 0 !important;
+  margin: 0 !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
