@@ -267,6 +267,32 @@ async function submitTransaction() {
       savingsConfirm.focus();
       return;
     }
+
+    // Hitung sisa saldo kategori saat ini
+    const spentMap = getSpentByCategory();
+    const currentSpent = spentMap[categoryId] || 0;
+    const catBudget = cat ? (cat.budget || 0) : 0;
+    const remaining = catBudget - currentSpent;
+    const deficit = amount - remaining;
+
+    // Jika minus/defisit, cegat dan tampilkan modal realokasi overbudget
+    if (deficit > 0) {
+      openOverbudgetModal({
+        txnData: {
+          type,
+          date,
+          categoryId,
+          subcategoryId,
+          description,
+          amount,
+        },
+        file: currentFile,
+        deficit,
+        targetCat: cat,
+        targetRemaining: remaining,
+      });
+      return;
+    }
   }
   
   if (submitBtn) {
@@ -301,6 +327,152 @@ async function submitTransaction() {
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = 'Simpan';
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// Overbudget Modal & Realokasi Saldo
+// -------------------------------------------------------------
+let pendingOverbudget = null;
+
+function openOverbudgetModal(data) {
+  pendingOverbudget = data;
+
+  const targetNameEl = document.getElementById('overbudget-target-cat-name');
+  const deficitEl = document.getElementById('overbudget-deficit-amount');
+  const sourceSelect = document.getElementById('overbudget-source-cat');
+  const confirmBtn = document.getElementById('btn-confirm-reallocate');
+  const helpText = document.getElementById('overbudget-source-help');
+  const previewBox = document.getElementById('overbudget-preview-box');
+
+  if (targetNameEl) targetNameEl.textContent = data.targetCat ? data.targetCat.name : 'Kategori';
+  if (deficitEl) deficitEl.textContent = formatRupiah(data.deficit);
+
+  // Ambil semua kategori lain yang memiliki sisa saldo > 0
+  const categories = getCategories();
+  const spentMap = getSpentByCategory();
+  const eligibleCategories = categories.filter(c => {
+    if (c.id == data.targetCat.id) return false;
+    const spent = spentMap[c.id] || 0;
+    const rem = (c.budget || 0) - spent;
+    return rem > 0;
+  });
+
+  sourceSelect.innerHTML = '';
+
+  if (eligibleCategories.length === 0) {
+    sourceSelect.innerHTML = '<option value="" disabled selected>Tidak ada kategori lain dengan sisa saldo positif</option>';
+    if (confirmBtn) confirmBtn.disabled = true;
+    if (helpText) helpText.textContent = 'Semua kategori lain telah habis atau tidak memiliki sisa saldo.';
+    if (previewBox) previewBox.classList.add('d-none');
+  } else {
+    if (confirmBtn) confirmBtn.disabled = false;
+    if (helpText) helpText.textContent = 'Pilih kategori yang masih memiliki sisa saldo positif untuk dipindahkan.';
+    if (previewBox) previewBox.classList.remove('d-none');
+
+    eligibleCategories.forEach((c, idx) => {
+      const spent = spentMap[c.id] || 0;
+      const rem = (c.budget || 0) - spent;
+      sourceSelect.innerHTML += `<option value="${c.id}" ${idx === 0 ? 'selected' : ''}>${c.name} (Sisa: ${formatRupiah(rem)})</option>`;
+    });
+
+    handleOverbudgetSourceChange();
+  }
+
+  const modal = document.getElementById('overbudget-modal');
+  if (modal) modal.showModal();
+}
+
+function handleOverbudgetSourceChange() {
+  if (!pendingOverbudget) return;
+
+  const sourceSelect = document.getElementById('overbudget-source-cat');
+  const sourceCatId = sourceSelect.value;
+  const sourceCat = getCategoryById(sourceCatId);
+  if (!sourceCat) return;
+
+  const spentMap = getSpentByCategory();
+  const sourceSpent = spentMap[sourceCat.id] || 0;
+  const sourceBudget = sourceCat.budget || 0;
+  const sourceRem = sourceBudget - sourceSpent;
+  const deficit = pendingOverbudget.deficit;
+
+  const targetCat = pendingOverbudget.targetCat;
+  const targetBudget = targetCat ? (targetCat.budget || 0) : 0;
+
+  const newSourceBudget = Math.max(0, sourceBudget - deficit);
+  const newTargetBudget = targetBudget + deficit;
+
+  const previewSourceName = document.getElementById('preview-source-name');
+  const previewSourceCalc = document.getElementById('preview-source-calc');
+  const previewTargetName = document.getElementById('preview-target-name');
+  const previewTargetCalc = document.getElementById('preview-target-calc');
+
+  if (previewSourceName) previewSourceName.textContent = `${sourceCat.name} (Budget):`;
+  if (previewSourceCalc) {
+    previewSourceCalc.textContent = `${formatRupiah(sourceBudget)} → ${formatRupiah(newSourceBudget)} (Sisa: ${formatRupiah(Math.max(0, sourceRem - deficit))})`;
+  }
+
+  if (previewTargetName) previewTargetName.textContent = `${targetCat.name} (Budget):`;
+  if (previewTargetCalc) {
+    previewTargetCalc.textContent = `${formatRupiah(targetBudget)} → ${formatRupiah(newTargetBudget)}`;
+  }
+}
+
+function closeOverbudgetDialog() {
+  const modal = document.getElementById('overbudget-modal');
+  if (modal) modal.close();
+  pendingOverbudget = null;
+}
+
+async function confirmAndReallocate() {
+  if (!pendingOverbudget) return;
+
+  const sourceSelect = document.getElementById('overbudget-source-cat');
+  const sourceCatId = sourceSelect.value;
+  if (!sourceCatId) {
+    alert('Harap pilih kategori sumber saldo.');
+    return;
+  }
+
+  const confirmBtn = document.getElementById('btn-confirm-reallocate');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memindahkan Saldo...';
+  }
+
+  try {
+    const success = await reallocateCategoryBudget(
+      sourceCatId,
+      pendingOverbudget.targetCat.id,
+      pendingOverbudget.deficit
+    );
+
+    if (success) {
+      // Simpan transaksi setelah budget berhasil dialihkan
+      await addTransaction(pendingOverbudget.txnData, pendingOverbudget.file);
+
+      closeOverbudgetDialog();
+      resetForm();
+
+      const bsCollapse = bootstrap.Collapse.getInstance(document.getElementById('formPengeluaran'));
+      if (bsCollapse) bsCollapse.hide();
+
+      populateCategorySelects();
+      loadTransactions();
+
+      if (window.updateGlobalState) window.updateGlobalState();
+    } else {
+      alert('Gagal melakukan realokasi budget. Silakan coba lagi.');
+    }
+  } catch (err) {
+    console.error('Error reallocate budget:', err);
+    alert('Terjadi kesalahan saat memindahkan saldo.');
+  } finally {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="bi bi-arrow-left-right me-1"></i> Konfirmasi & Pindahkan Saldo';
     }
   }
 }

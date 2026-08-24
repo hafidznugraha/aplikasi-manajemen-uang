@@ -281,6 +281,57 @@ async function updateCategory(categoryId, updates) {
 }
 
 /**
+ * Realokasi budget antar kategori (saat overbudget)
+ */
+async function reallocateCategoryBudget(sourceCatId, targetCatId, amount) {
+  const sourceCat = _currentBudget.categories.find(c => c.id == sourceCatId);
+  const targetCat = _currentBudget.categories.find(c => c.id == targetCatId);
+
+  if (!sourceCat || !targetCat || amount <= 0) return false;
+
+  const newSourceBudget = Math.max(0, (sourceCat.budget || 0) - amount);
+  const newTargetBudget = (targetCat.budget || 0) + amount;
+
+  // Optimistic UI updates in memory and localStorage
+  sourceCat.budget = newSourceBudget;
+  targetCat.budget = newTargetBudget;
+  persistHotCache();
+
+  try {
+    await Promise.all([
+      fetch(`/api/categories/${sourceCatId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ budget: newSourceBudget }),
+      }),
+      fetch(`/api/categories/${targetCatId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ budget: newTargetBudget }),
+      }),
+    ]);
+    return true;
+  } catch (err) {
+    console.error('Gagal realokasi budget:', err);
+    return false;
+  }
+}
+
+function getCategoryRemainingBudget(categoryId) {
+  const cat = getCategoryById(categoryId);
+  if (!cat) return 0;
+  const spentMap = getSpentByCategory();
+  const spent = spentMap[categoryId] || 0;
+  return (cat.budget || 0) - spent;
+}
+
+/**
  * Hapus kategori
  */
 async function deleteCategory(categoryId) {

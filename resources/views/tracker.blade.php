@@ -321,6 +321,54 @@
     </div>
   </dialog>
 
+  <!-- Dialog: Overbudget Reallocation Confirmation -->
+  <dialog id="overbudget-modal" class="modal-budgetku rounded shadow-lg border-0 p-0" style="max-width: 520px; width: 95%;">
+    <div class="modal-header-bk d-flex justify-content-between align-items-center p-3 border-bottom bg-warning-subtle text-warning-emphasis">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+        <h5 class="m-0 fw-bold">Peringatan Overbudget</h5>
+      </div>
+      <button class="btn btn-sm btn-light border-0" onclick="closeOverbudgetDialog()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal-body-bk p-4">
+      <div class="alert alert-warning border-0 bg-warning bg-opacity-10 d-flex align-items-start gap-3 mb-3">
+        <i class="bi bi-info-circle-fill text-warning fs-5 mt-1"></i>
+        <div>
+          <p class="mb-0 text-dark small" id="overbudget-message">
+            Pengeluaran ini melebihi sisa budget kategori <strong id="overbudget-target-cat-name">[Nama Kategori]</strong> sebesar <strong class="text-danger font-monospace" id="overbudget-deficit-amount">Rp 0</strong>. Anda harus menutupi kekurangan ini dari kategori lain.
+          </p>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="overbudget-source-cat" class="form-label fw-semibold small text-dark">Pilih Kategori Sumber Saldo:</label>
+        <select class="form-select" id="overbudget-source-cat" onchange="handleOverbudgetSourceChange()">
+          <!-- Populated dynamically via JS -->
+        </select>
+        <div class="form-text small text-muted" id="overbudget-source-help">Pilih kategori yang masih memiliki sisa saldo positif.</div>
+      </div>
+
+      <!-- Realokasi Preview Card -->
+      <div class="p-3 bg-light rounded border mb-2 small" id="overbudget-preview-box">
+        <div class="fw-semibold text-secondary mb-2">Simulasi Pemindahan Saldo:</div>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span id="preview-source-name" class="text-muted">Kategori Sumber:</span>
+          <span id="preview-source-calc" class="font-monospace text-danger">Rp 0 &rarr; Rp 0</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+          <span id="preview-target-name" class="text-muted">Kategori Tujuan:</span>
+          <span id="preview-target-calc" class="font-monospace text-success">Rp 0 &rarr; Rp 0</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer-bk p-3 border-top d-flex justify-content-end gap-2 bg-light">
+      <button type="button" class="btn btn-light" onclick="closeOverbudgetDialog()">Batal</button>
+      <button type="button" class="btn btn-warning fw-semibold text-dark" id="btn-confirm-reallocate" onclick="confirmAndReallocate()">
+        <i class="bi bi-arrow-left-right me-1"></i> Konfirmasi & Pindahkan Saldo
+      </button>
+    </div>
+  </dialog>
+
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   
