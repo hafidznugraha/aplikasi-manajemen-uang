@@ -31,6 +31,7 @@ function initTomSelectFilters() {
       controlInput: null,
       allowEmptyOption: true,
       placeholder: 'Semua Tipe',
+      sortField: { field: '$order' },
       onChange: () => applyFilters()
     });
   }
@@ -42,6 +43,7 @@ function initTomSelectFilters() {
       controlInput: null,
       allowEmptyOption: true,
       placeholder: 'Semua Kategori',
+      sortField: { field: '$order' },
       onChange: () => applyFilters()
     });
   }
@@ -53,6 +55,7 @@ function initTomSelectFilters() {
       controlInput: null,
       allowEmptyOption: true,
       placeholder: 'Pilih Kategori',
+      sortField: { field: '$order' },
       onChange: () => handleCategoryChange()
     });
   }
@@ -63,7 +66,8 @@ function initTomSelectFilters() {
       create: false,
       controlInput: null,
       allowEmptyOption: true,
-      placeholder: 'Pilih Sub-Kategori (Opsional)'
+      placeholder: 'Pilih Sub-Kategori (Opsional)',
+      sortField: { field: '$order' }
     });
   }
 
@@ -74,6 +78,7 @@ function initTomSelectFilters() {
       controlInput: null,
       allowEmptyOption: true,
       placeholder: 'Pilih Kategori',
+      sortField: { field: '$order' },
       onChange: () => handleEditCategoryChange()
     });
   }
@@ -84,7 +89,8 @@ function initTomSelectFilters() {
       create: false,
       controlInput: null,
       allowEmptyOption: true,
-      placeholder: 'Pilih Sub-Kategori (Opsional)'
+      placeholder: 'Pilih Sub-Kategori (Opsional)',
+      sortField: { field: '$order' }
     });
   }
 }

@@ -112,7 +112,7 @@
           <option value="reallocation">Realokasi</option>
         </select>
       </div>
-      <div class="flex-grow-1" style="min-width: 200px;">
+      <div style="min-width: 170px; max-width: 220px;">
         <select id="filter-category" onchange="applyFilters()">
           <option value="">Semua Kategori</option>
         </select>
