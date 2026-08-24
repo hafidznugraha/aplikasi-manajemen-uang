@@ -26,7 +26,7 @@
   ],
   "env": {
     "APP_ENV": "production",
-    "APP_DEBUG": "false",
+    "APP_DEBUG": "true",
     "VERCEL": "1",
     "APP_KEY": "base64:ByATbm2ERTMni8tihEA60BOtYXZDi0STCVa4N+11QY4=",
     "VIEW_COMPILED_PATH": "/tmp/storage/framework/views",
