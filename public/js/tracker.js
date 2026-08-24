@@ -268,12 +268,26 @@ async function submitTransaction() {
       return;
     }
 
-    // Hitung sisa saldo kategori saat ini
+    // Hitung sisa saldo kategori / sub-kategori saat ini
     const spentMap = getSpentByCategory();
-    const currentSpent = spentMap[categoryId] || 0;
-    const catBudget = cat ? (cat.budget || 0) : 0;
-    const remaining = catBudget - currentSpent;
-    const deficit = amount - remaining;
+    const spentBySub = typeof getSpentBySubcategory === 'function' ? getSpentBySubcategory() : {};
+    
+    let targetRemaining = 0;
+    let targetSubObj = null;
+
+    if (subcategoryId && Array.isArray(cat.subcategories)) {
+      targetSubObj = cat.subcategories.find(s => s.id == subcategoryId);
+      if (targetSubObj) {
+        const subSpent = spentBySub[subcategoryId] || 0;
+        targetRemaining = (targetSubObj.budget || 0) - subSpent;
+      }
+    } else {
+      const currentSpent = spentMap[categoryId] || 0;
+      const catBudget = cat ? (cat.budget || 0) : 0;
+      targetRemaining = catBudget - currentSpent;
+    }
+
+    const deficit = amount - targetRemaining;
 
     // Jika minus/defisit, cegat dan tampilkan modal realokasi overbudget
     if (deficit > 0) {
@@ -289,7 +303,9 @@ async function submitTransaction() {
         file: currentFile,
         deficit,
         targetCat: cat,
-        targetRemaining: remaining,
+        targetSubId: subcategoryId || null,
+        targetSubName: targetSubObj ? targetSubObj.name : null,
+        targetRemaining: targetRemaining,
       });
       return;
     }
@@ -332,7 +348,7 @@ async function submitTransaction() {
 }
 
 // -------------------------------------------------------------
-// Overbudget Modal & Realokasi Saldo
+// Overbudget Modal & Realokasi Saldo (Kategori & Sub-Kategori)
 // -------------------------------------------------------------
 let pendingOverbudget = null;
 
@@ -346,37 +362,72 @@ function openOverbudgetModal(data) {
   const helpText = document.getElementById('overbudget-source-help');
   const previewBox = document.getElementById('overbudget-preview-box');
 
-  if (targetNameEl) targetNameEl.textContent = data.targetCat ? data.targetCat.name : 'Kategori';
+  const fullTargetName = data.targetSubName
+    ? `${data.targetCat.name} › ${data.targetSubName}`
+    : (data.targetCat ? data.targetCat.name : 'Kategori');
+
+  if (targetNameEl) targetNameEl.textContent = fullTargetName;
   if (deficitEl) deficitEl.textContent = formatRupiah(data.deficit);
 
-  // Ambil semua kategori lain yang memiliki sisa saldo > 0
+  // Ambil data kategori & pengeluaran terkini
   const categories = getCategories();
   const spentMap = getSpentByCategory();
-  const eligibleCategories = categories.filter(c => {
-    if (c.id == data.targetCat.id) return false;
-    const spent = spentMap[c.id] || 0;
-    const rem = (c.budget || 0) - spent;
-    return rem > 0;
-  });
+  const spentBySub = typeof getSpentBySubcategory === 'function' ? getSpentBySubcategory() : {};
 
   sourceSelect.innerHTML = '';
+  let optionCount = 0;
 
-  if (eligibleCategories.length === 0) {
-    sourceSelect.innerHTML = '<option value="" disabled selected>Tidak ada kategori lain dengan sisa saldo positif</option>';
+  categories.forEach(cat => {
+    // 1. Jika Kategori Utama memiliki sub-kategori: render sebagai <optgroup>
+    if (Array.isArray(cat.subcategories) && cat.subcategories.length > 0) {
+      const eligibleSubs = cat.subcategories.filter(sub => {
+        // Jangan tawarkan sub-kategori target yang sama
+        if (data.targetSubId && sub.id == data.targetSubId) return false;
+        const subSpent = spentBySub[sub.id] || 0;
+        const rem = (sub.budget || 0) - subSpent;
+        return rem > 0;
+      });
+
+      if (eligibleSubs.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = cat.name;
+
+        eligibleSubs.forEach(sub => {
+          const subSpent = spentBySub[sub.id] || 0;
+          const rem = (sub.budget || 0) - subSpent;
+          const option = document.createElement('option');
+          option.value = `${cat.id}|${sub.id}`;
+          option.textContent = `${sub.name} (Sisa: ${formatRupiah(rem)})`;
+          optgroup.appendChild(option);
+          optionCount++;
+        });
+
+        sourceSelect.appendChild(optgroup);
+      }
+    } else {
+      // 2. Jika Kategori Utama TIDAK memiliki sub-kategori: render sebagai <option> langsung
+      if (!data.targetSubId && cat.id == data.targetCat.id) return;
+      const catSpent = spentMap[cat.id] || 0;
+      const rem = (cat.budget || 0) - catSpent;
+      if (rem > 0) {
+        const option = document.createElement('option');
+        option.value = `${cat.id}`;
+        option.textContent = `${cat.name} (Sisa: ${formatRupiah(rem)})`;
+        sourceSelect.appendChild(option);
+        optionCount++;
+      }
+    }
+  });
+
+  if (optionCount === 0) {
+    sourceSelect.innerHTML = '<option value="" disabled selected>Tidak ada kategori / sub-kategori lain dengan sisa saldo positif</option>';
     if (confirmBtn) confirmBtn.disabled = true;
-    if (helpText) helpText.textContent = 'Semua kategori lain telah habis atau tidak memiliki sisa saldo.';
+    if (helpText) helpText.textContent = 'Semua pos pengeluaran lain telah habis atau tidak memiliki sisa saldo.';
     if (previewBox) previewBox.classList.add('d-none');
   } else {
     if (confirmBtn) confirmBtn.disabled = false;
-    if (helpText) helpText.textContent = 'Pilih kategori yang masih memiliki sisa saldo positif untuk dipindahkan.';
+    if (helpText) helpText.textContent = 'Pilih sub-kategori atau kategori yang masih memiliki sisa saldo positif.';
     if (previewBox) previewBox.classList.remove('d-none');
-
-    eligibleCategories.forEach((c, idx) => {
-      const spent = spentMap[c.id] || 0;
-      const rem = (c.budget || 0) - spent;
-      sourceSelect.innerHTML += `<option value="${c.id}" ${idx === 0 ? 'selected' : ''}>${c.name} (Sisa: ${formatRupiah(rem)})</option>`;
-    });
-
     handleOverbudgetSourceChange();
   }
 
@@ -388,35 +439,65 @@ function handleOverbudgetSourceChange() {
   if (!pendingOverbudget) return;
 
   const sourceSelect = document.getElementById('overbudget-source-cat');
-  const sourceCatId = sourceSelect.value;
+  const sourceVal = sourceSelect.value;
+  if (!sourceVal) return;
+
+  const [sourceCatId, sourceSubId] = sourceVal.split('|');
   const sourceCat = getCategoryById(sourceCatId);
   if (!sourceCat) return;
 
   const spentMap = getSpentByCategory();
-  const sourceSpent = spentMap[sourceCat.id] || 0;
-  const sourceBudget = sourceCat.budget || 0;
-  const sourceRem = sourceBudget - sourceSpent;
+  const spentBySub = typeof getSpentBySubcategory === 'function' ? getSpentBySubcategory() : {};
   const deficit = pendingOverbudget.deficit;
-
-  const targetCat = pendingOverbudget.targetCat;
-  const targetBudget = targetCat ? (targetCat.budget || 0) : 0;
-
-  const newSourceBudget = Math.max(0, sourceBudget - deficit);
-  const newTargetBudget = targetBudget + deficit;
 
   const previewSourceName = document.getElementById('preview-source-name');
   const previewSourceCalc = document.getElementById('preview-source-calc');
   const previewTargetName = document.getElementById('preview-target-name');
   const previewTargetCalc = document.getElementById('preview-target-calc');
 
-  if (previewSourceName) previewSourceName.textContent = `${sourceCat.name} (Budget):`;
-  if (previewSourceCalc) {
-    previewSourceCalc.textContent = `${formatRupiah(sourceBudget)} → ${formatRupiah(newSourceBudget)} (Sisa: ${formatRupiah(Math.max(0, sourceRem - deficit))})`;
+  if (sourceSubId && Array.isArray(sourceCat.subcategories)) {
+    const sourceSub = sourceCat.subcategories.find(s => s.id == sourceSubId);
+    if (sourceSub) {
+      const subSpent = spentBySub[sourceSub.id] || 0;
+      const subBudget = sourceSub.budget || 0;
+      const newSubBudget = Math.max(0, subBudget - deficit);
+      const newSubRem = Math.max(0, subBudget - subSpent - deficit);
+
+      if (previewSourceName) previewSourceName.textContent = `${sourceCat.name} › ${sourceSub.name}:`;
+      if (previewSourceCalc) {
+        previewSourceCalc.textContent = `${formatRupiah(subBudget)} → ${formatRupiah(newSubBudget)} (Sisa: ${formatRupiah(newSubRem)})`;
+      }
+    }
+  } else {
+    const catSpent = spentMap[sourceCat.id] || 0;
+    const catBudget = sourceCat.budget || 0;
+    const newCatBudget = Math.max(0, catBudget - deficit);
+    const newCatRem = Math.max(0, catBudget - catSpent - deficit);
+
+    if (previewSourceName) previewSourceName.textContent = `${sourceCat.name}:`;
+    if (previewSourceCalc) {
+      previewSourceCalc.textContent = `${formatRupiah(catBudget)} → ${formatRupiah(newCatBudget)} (Sisa: ${formatRupiah(newCatRem)})`;
+    }
   }
 
-  if (previewTargetName) previewTargetName.textContent = `${targetCat.name} (Budget):`;
-  if (previewTargetCalc) {
-    previewTargetCalc.textContent = `${formatRupiah(targetBudget)} → ${formatRupiah(newTargetBudget)}`;
+  const targetCat = pendingOverbudget.targetCat;
+  if (pendingOverbudget.targetSubId && Array.isArray(targetCat.subcategories)) {
+    const targetSub = targetCat.subcategories.find(s => s.id == pendingOverbudget.targetSubId);
+    if (targetSub) {
+      const targetSubBudget = targetSub.budget || 0;
+      const newTargetSubBudget = targetSubBudget + deficit;
+      if (previewTargetName) previewTargetName.textContent = `${targetCat.name} › ${targetSub.name}:`;
+      if (previewTargetCalc) {
+        previewTargetCalc.textContent = `${formatRupiah(targetSubBudget)} → ${formatRupiah(newTargetSubBudget)}`;
+      }
+    }
+  } else {
+    const targetBudget = targetCat ? (targetCat.budget || 0) : 0;
+    const newTargetBudget = targetBudget + deficit;
+    if (previewTargetName) previewTargetName.textContent = `${targetCat.name}:`;
+    if (previewTargetCalc) {
+      previewTargetCalc.textContent = `${formatRupiah(targetBudget)} → ${formatRupiah(newTargetBudget)}`;
+    }
   }
 }
 
@@ -430,11 +511,13 @@ async function confirmAndReallocate() {
   if (!pendingOverbudget) return;
 
   const sourceSelect = document.getElementById('overbudget-source-cat');
-  const sourceCatId = sourceSelect.value;
-  if (!sourceCatId) {
+  const sourceVal = sourceSelect.value;
+  if (!sourceVal) {
     alert('Harap pilih kategori sumber saldo.');
     return;
   }
+
+  const [sourceCatId, sourceSubId] = sourceVal.split('|');
 
   const confirmBtn = document.getElementById('btn-confirm-reallocate');
   if (confirmBtn) {
@@ -446,7 +529,9 @@ async function confirmAndReallocate() {
     const success = await reallocateCategoryBudget(
       sourceCatId,
       pendingOverbudget.targetCat.id,
-      pendingOverbudget.deficit
+      pendingOverbudget.deficit,
+      sourceSubId || null,
+      pendingOverbudget.targetSubId || null
     );
 
     if (success) {

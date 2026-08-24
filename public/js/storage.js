@@ -281,23 +281,42 @@ async function updateCategory(categoryId, updates) {
 }
 
 /**
- * Realokasi budget antar kategori (saat overbudget)
+ * Realokasi budget antar kategori & sub-kategori (saat overbudget)
  */
-async function reallocateCategoryBudget(sourceCatId, targetCatId, amount) {
+async function reallocateCategoryBudget(sourceCatId, targetCatId, amount, sourceSubId = null, targetSubId = null) {
   const sourceCat = _currentBudget.categories.find(c => c.id == sourceCatId);
   const targetCat = _currentBudget.categories.find(c => c.id == targetCatId);
 
   if (!sourceCat || !targetCat || amount <= 0) return false;
 
-  const newSourceBudget = Math.max(0, (sourceCat.budget || 0) - amount);
-  const newTargetBudget = (targetCat.budget || 0) + amount;
+  // 1. Kurangi sumber
+  if (sourceSubId && Array.isArray(sourceCat.subcategories)) {
+    const sourceSub = sourceCat.subcategories.find(s => s.id == sourceSubId);
+    if (sourceSub) {
+      sourceSub.budget = Math.max(0, (sourceSub.budget || 0) - amount);
+    }
+  }
+  sourceCat.budget = Math.max(0, (sourceCat.budget || 0) - amount);
 
-  // Optimistic UI updates in memory and localStorage
-  sourceCat.budget = newSourceBudget;
-  targetCat.budget = newTargetBudget;
+  // 2. Tambah target
+  if (targetSubId && Array.isArray(targetCat.subcategories)) {
+    const targetSub = targetCat.subcategories.find(s => s.id == targetSubId);
+    if (targetSub) {
+      targetSub.budget = (targetSub.budget || 0) + amount;
+    }
+  }
+  targetCat.budget = (targetCat.budget || 0) + amount;
+
+  // Optimistic memory & local cache update
   persistHotCache();
 
   try {
+    const sourcePayload = { budget: sourceCat.budget };
+    if (sourceCat.subcategories) sourcePayload.subcategories = sourceCat.subcategories;
+
+    const targetPayload = { budget: targetCat.budget };
+    if (targetCat.subcategories) targetPayload.subcategories = targetCat.subcategories;
+
     await Promise.all([
       fetch(`/api/categories/${sourceCatId}`, {
         method: 'PUT',
@@ -305,7 +324,7 @@ async function reallocateCategoryBudget(sourceCatId, targetCatId, amount) {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ budget: newSourceBudget }),
+        body: JSON.stringify(sourcePayload),
       }),
       fetch(`/api/categories/${targetCatId}`, {
         method: 'PUT',
@@ -313,7 +332,7 @@ async function reallocateCategoryBudget(sourceCatId, targetCatId, amount) {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ budget: newTargetBudget }),
+        body: JSON.stringify(targetPayload),
       }),
     ]);
     return true;
@@ -329,6 +348,19 @@ function getCategoryRemainingBudget(categoryId) {
   const spentMap = getSpentByCategory();
   const spent = spentMap[categoryId] || 0;
   return (cat.budget || 0) - spent;
+}
+
+function getSpentBySubcategory() {
+  const transactions = getTransactions();
+  const result = {};
+  transactions.forEach((txn) => {
+    if (txn.type === 'income') return;
+    if (txn.subcategoryId) {
+      if (!result[txn.subcategoryId]) result[txn.subcategoryId] = 0;
+      result[txn.subcategoryId] += txn.amount;
+    }
+  });
+  return result;
 }
 
 /**

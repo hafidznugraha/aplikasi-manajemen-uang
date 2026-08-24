@@ -263,23 +263,29 @@ class ApiController extends Controller
         $category->save();
 
         if ($request->has('subcategories') && is_array($request->input('subcategories'))) {
-            // Hapus subkategori lama dan buat ulang
-            $category->subcategories()->delete();
-            $newSubs = [];
-            foreach ($request->input('subcategories') as $sub) {
+            $inputSubs = $request->input('subcategories');
+            $keepIds = [];
+
+            foreach ($inputSubs as $sub) {
                 if (!empty($sub['name'])) {
-                    $subcat = Subcategory::create([
-                        'category_id' => $category->id,
-                        'name' => $sub['name'],
-                        'budget_amount' => (int) ($sub['budget'] ?? 0),
-                    ]);
-                    $newSubs[] = [
-                        'id' => (string) $subcat->id,
-                        'name' => $subcat->name,
-                        'budget' => (int) $subcat->budget_amount,
-                    ];
+                    if (!empty($sub['id']) && $existingSub = Subcategory::where('category_id', $category->id)->where('id', $sub['id'])->first()) {
+                        $existingSub->name = $sub['name'];
+                        $existingSub->budget_amount = (int) ($sub['budget'] ?? 0);
+                        $existingSub->save();
+                        $keepIds[] = $existingSub->id;
+                    } else {
+                        $newSub = Subcategory::create([
+                            'category_id' => $category->id,
+                            'name' => $sub['name'],
+                            'budget_amount' => (int) ($sub['budget'] ?? 0),
+                        ]);
+                        $keepIds[] = $newSub->id;
+                    }
                 }
             }
+
+            // Hapus subkategori yang memang sudah dihapus oleh user
+            $category->subcategories()->whereNotIn('id', $keepIds)->delete();
         }
 
         $category->load('subcategories');
