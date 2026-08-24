@@ -24,9 +24,13 @@ Route::get('/tracker', [TrackerController::class, 'index'])->name('tracker.index
 // Route Halaman Profil & Autentikasi
 Route::view('/profile', 'profile')->name('profile.index');
 Route::view('/login', 'login')->name('login');
+Route::post('/login', [ApiController::class, 'login']);
 Route::view('/register', 'register')->name('register');
+Route::post('/register', [ApiController::class, 'register']);
 Route::view('/forgot-password', 'forgot-password')->name('password.request');
+Route::post('/forgot-password', [ApiController::class, 'forgotPassword']);
 Route::view('/reset-password', 'reset-password')->name('password.reset');
+Route::post('/reset-password', [ApiController::class, 'resetPassword']);
 
 // Supabase REST API Endpoints
 use App\Http\Controllers\ApiController;
