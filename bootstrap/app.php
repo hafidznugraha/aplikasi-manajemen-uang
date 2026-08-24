@@ -38,6 +38,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Percayai reverse proxy Vercel untuk membaca header HTTPS & IP
+        $middleware->trustProxies(at: '*');
+
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
