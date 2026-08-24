@@ -321,6 +321,40 @@ function updateAllocationSummary() {
 }
 
 // Modal functions
+function updateCategoryBudgetFromSubcats() {
+  const subcatRows = document.querySelectorAll('.subcat-input-row');
+  const catBudgetInput = document.getElementById('cat-budget-input');
+  const catBudgetHelper = document.getElementById('cat-budget-auto-helper');
+
+  if (!catBudgetInput) return;
+
+  if (subcatRows.length > 0) {
+    // Ada 1 atau lebih sub-kategori: Kunci input menjadi readonly & auto-sum
+    catBudgetInput.readOnly = true;
+    catBudgetInput.classList.add('bg-light');
+    if (catBudgetHelper) {
+      catBudgetHelper.classList.remove('d-none');
+    }
+
+    let total = 0;
+    subcatRows.forEach(row => {
+      const budgetInput = row.querySelector('.subcat-budget');
+      if (budgetInput) {
+        total += window.parseRupiah(budgetInput.value) || 0;
+      }
+    });
+
+    catBudgetInput.value = window.formatRupiah(total).replace('Rp ', '');
+  } else {
+    // Tidak ada sub-kategori: Buka kunci manual
+    catBudgetInput.readOnly = false;
+    catBudgetInput.classList.remove('bg-light');
+    if (catBudgetHelper) {
+      catBudgetHelper.classList.add('d-none');
+    }
+  }
+}
+
 function openAddCategoryModal() {
   document.getElementById('category-modal-title').textContent = 'Tambah Kategori';
   document.getElementById('cat-id-input').value = '';
@@ -333,6 +367,7 @@ function openAddCategoryModal() {
   document.getElementById('cat-name-input').classList.remove('is-invalid');
   document.getElementById('cat-budget-input').classList.remove('is-invalid');
   
+  updateCategoryBudgetFromSubcats();
   categoryModal.showModal();
 }
 
@@ -353,15 +388,16 @@ function openEditCategoryModal(catId) {
   const subcatContainer = document.getElementById('subcat-list-container');
   subcatContainer.innerHTML = '';
   
-  if (cat.subcategories) {
+  if (cat.subcategories && cat.subcategories.length > 0) {
     cat.subcategories.forEach(sub => {
-      addSubcatInputRow(sub.name, sub.budget);
+      addSubcatInputRow(sub.name, sub.budget, sub.id);
     });
   }
   
   document.getElementById('cat-name-input').classList.remove('is-invalid');
   document.getElementById('cat-budget-input').classList.remove('is-invalid');
   
+  updateCategoryBudgetFromSubcats();
   categoryModal.showModal();
 }
 
@@ -369,10 +405,13 @@ function closeCategoryModal() {
   categoryModal.close();
 }
 
-function addSubcatInputRow(name = '', budget = 0) {
+function addSubcatInputRow(name = '', budget = 0, id = null) {
   const container = document.getElementById('subcat-list-container');
   const row = document.createElement('div');
   row.className = 'd-flex gap-2 mb-2 subcat-input-row';
+  if (id) {
+    row.dataset.subId = id;
+  }
   
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -387,19 +426,30 @@ function addSubcatInputRow(name = '', budget = 0) {
   if (budget > 0) {
     budgetInput.value = window.formatRupiah(budget).replace('Rp ', '');
   }
-  budgetInput.addEventListener('input', (e) => window.formatInputRupiah(e.target));
+  
+  budgetInput.addEventListener('input', (e) => {
+    window.formatInputRupiah(e.target);
+    updateCategoryBudgetFromSubcats();
+  });
+  budgetInput.addEventListener('keyup', () => {
+    updateCategoryBudgetFromSubcats();
+  });
   
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'btn btn-outline-danger';
   removeBtn.innerHTML = '<i class="bi bi-x"></i>';
-  removeBtn.addEventListener('click', () => row.remove());
+  removeBtn.addEventListener('click', () => {
+    row.remove();
+    updateCategoryBudgetFromSubcats();
+  });
   
   row.appendChild(nameInput);
   row.appendChild(budgetInput);
   row.appendChild(removeBtn);
   
   container.appendChild(row);
+  updateCategoryBudgetFromSubcats();
 }
 
 async function saveCategoryFromModal() {
@@ -440,7 +490,7 @@ async function saveCategoryFromModal() {
     } else {
       sNameInput.classList.remove('is-invalid');
       subcategories.push({
-        id: window.generateId('sub'),
+        id: row.dataset.subId || window.generateId('sub'),
         name: sName,
         budget: sBudg
       });

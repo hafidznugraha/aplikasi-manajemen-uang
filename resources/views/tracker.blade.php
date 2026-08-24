@@ -53,15 +53,51 @@
   </nav>
 
   <main class="container-fluid px-4 px-md-5 pt-3 pb-5">
+    <!-- Print-Only Header -->
+    <div class="print-header">
+      <h2>BudgetKu &mdash; Rekapitulasi Transaksi</h2>
+      <p id="print-subtitle">Laporan Mutasi Keuangan &bull; Diekspor pada: <span id="print-date"></span></p>
+    </div>
+
     <!-- Page Header -->
-    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
       <div>
         <h2 class="h4 mb-1 fw-bold text-dark">Tracker Harian</h2>
         <p class="text-muted small mb-0">Catat dan pantau arus pengeluaran serta pemasukan tambahan Anda</p>
       </div>
-      <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
-        <i class="bi bi-plus-lg"></i> Tambah Transaksi
-      </button>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Export Dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-download"></i> Ekspor
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2">
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="#" onclick="event.preventDefault(); exportToPDF();">
+                <i class="bi bi-file-earmark-pdf text-danger fs-5"></i>
+                <div>
+                  <div class="fw-semibold small">Simpan sebagai PDF</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Cetak atau simpan via print browser</div>
+                </div>
+              </a>
+            </li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="#" onclick="event.preventDefault(); exportToCSV();">
+                <i class="bi bi-file-earmark-spreadsheet text-success fs-5"></i>
+                <div>
+                  <div class="fw-semibold small">Unduh Excel / CSV</div>
+                  <div class="text-muted" style="font-size: 0.75rem;">Ekspor data yang difilter (.csv)</div>
+                </div>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+          <i class="bi bi-plus-lg"></i> Tambah Transaksi
+        </button>
+      </div>
     </div>
 
     <!-- Filter Bar -->

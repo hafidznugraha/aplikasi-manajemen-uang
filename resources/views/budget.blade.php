@@ -138,7 +138,12 @@
             <div class="invalid-feedback">Nama kategori harus diisi.</div>
           </div>
           <div class="mb-3">
-            <label class="form-label fw-medium">Budget Kategori <span class="text-danger">*</span></label>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label fw-medium mb-0">Budget Kategori <span class="text-danger">*</span></label>
+              <small class="text-primary fw-semibold d-none" id="cat-budget-auto-helper">
+                <i class="bi bi-calculator me-1"></i>Otomatis dari subkategori
+              </small>
+            </div>
             <div class="input-group">
               <span class="input-group-text bg-white">Rp</span>
               <input type="text" class="form-control" id="cat-budget-input" placeholder="0" required>

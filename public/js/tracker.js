@@ -663,9 +663,15 @@ async function renderTable() {
   emptyState.classList.add('d-none');
   tableCard.classList.remove('d-none');
   
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, filteredTransactions.length);
-  const pageItems = filteredTransactions.slice(startIndex, endIndex);
+  let pageItems;
+  if (window._isPrinting) {
+    pageItems = filteredTransactions;
+    if (paginationNav) paginationNav.classList.add('d-none');
+  } else {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, filteredTransactions.length);
+    pageItems = filteredTransactions.slice(startIndex, endIndex);
+  }
   
   for (const txn of pageItems) {
     const isIncome = txn.type === 'income';
@@ -950,4 +956,98 @@ function closeDeleteDialog() {
   txnToDelete = null;
   document.getElementById('deleteConfirmDialog').close();
 }
+
+// -------------------------------------------------------------
+// Ekspor Data ke Excel/CSV & PDF
+// -------------------------------------------------------------
+
+function exportToCSV() {
+  const transactions = filteredTransactions || [];
+  if (transactions.length === 0) {
+    alert('Tidak ada data transaksi untuk diekspor.');
+    return;
+  }
+
+  const categories = getCategories();
+  const rows = [];
+  // Header CSV
+  rows.push(['Tanggal', 'Tipe', 'Kategori', 'Sub-Kategori', 'Keterangan', 'Nominal (Rp)']);
+
+  transactions.forEach(txn => {
+    const isIncome = txn.type === 'income';
+    const isReallocation = txn.type === 'reallocation';
+    let typeLabel = 'Pengeluaran';
+    let catName = '-';
+    let subName = '-';
+
+    if (isIncome) {
+      typeLabel = 'Pemasukan';
+    } else if (isReallocation) {
+      typeLabel = 'Realokasi';
+    } else {
+      const cat = categories.find(c => c.id == txn.categoryId);
+      if (cat) {
+        catName = cat.name;
+        if (txn.subcategoryId && Array.isArray(cat.subcategories)) {
+          const sub = cat.subcategories.find(s => s.id == txn.subcategoryId);
+          if (sub) subName = sub.name;
+        }
+      }
+    }
+
+    const desc = (txn.description || '').replace(/"/g, '""');
+    const amountVal = isIncome ? txn.amount : (isReallocation ? txn.amount : -txn.amount);
+
+    rows.push([
+      `"${txn.date}"`,
+      `"${typeLabel}"`,
+      `"${catName}"`,
+      `"${subName}"`,
+      `"${desc}"`,
+      amountVal
+    ]);
+  });
+
+  const csvString = rows.map(r => r.join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'Rekap_Transaksi_BudgetKu.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportToPDF() {
+  if (!filteredTransactions || filteredTransactions.length === 0) {
+    alert('Tidak ada data transaksi untuk diekspor.');
+    return;
+  }
+
+  const printDateEl = document.getElementById('print-date');
+  if (printDateEl) {
+    const now = new Date();
+    printDateEl.textContent = now.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  window.print();
+}
+
+window.addEventListener('beforeprint', () => {
+  window._isPrinting = true;
+  renderTable();
+});
+
+window.addEventListener('afterprint', () => {
+  window._isPrinting = false;
+  renderTable();
+});
 

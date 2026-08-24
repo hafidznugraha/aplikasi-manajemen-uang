@@ -616,19 +616,111 @@ select:user-invalid {
   pointer-events: none;
 }
 
-/* ---------- Page Content Transition ---------- */
-.page-content-fade {
-  animation: fadeInPage 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ---------- Print Header (Hidden on screen) ---------- */
+.print-header {
+  display: none;
 }
 
-@keyframes fadeInPage {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
+/* ---------- Print Styles for PDF / Paper Export ---------- */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Sembunyikan elemen non-cetak */
+  .navbar-budgetku,
+  .filter-bar,
+  .page-header,
+  .btn,
+  .btn-group,
+  .dropdown,
+  #pagination-nav,
+  .modal,
+  dialog,
+  #top-loader,
+  .table-transactions th:nth-child(5),
+  .table-transactions td:nth-child(5),
+  .table-transactions th:last-child,
+  .table-transactions td:last-child {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  .card-body {
+    padding: 0 !important;
+  }
+
+  .print-header {
+    display: block !important;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #111827;
+    padding-bottom: 0.75rem;
+  }
+
+  .print-header h2 {
+    font-size: 18pt;
+    font-weight: 800;
+    margin: 0 0 4px 0;
+    color: #111827;
+  }
+
+  .print-header p {
+    font-size: 10pt;
+    color: #4b5563;
+    margin: 0;
+  }
+
+  /* Table styling for print */
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  .table-transactions {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .table-transactions th,
+  .table-transactions td {
+    padding: 8px 10px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+    font-size: 10pt !important;
+  }
+
+  .table-transactions thead th {
+    background-color: #f3f4f6 !important;
+    border-bottom: 2px solid #111827 !important;
+    font-weight: 700 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .badge {
+    border: 1px solid #9ca3af !important;
+    color: #111827 !important;
+    background: transparent !important;
+    font-weight: 600 !important;
+    padding: 2px 6px !important;
   }
 }
 
