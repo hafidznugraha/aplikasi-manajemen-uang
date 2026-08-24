@@ -21,6 +21,8 @@ $envDefaults = [
     'FILESYSTEM_DISK' => 'local',
     'QUEUE_CONNECTION' => 'database',
     'MAIL_MAILER' => 'log',
+    'APP_MAINTENANCE_DRIVER' => 'file',
+    'APP_MAINTENANCE_STORE' => 'database',
 ];
 
 foreach ($envDefaults as $key => $defaultVal) {
