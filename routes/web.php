@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TrackerController;
+use App\Http\Controllers\ApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,8 +34,6 @@ Route::view('/reset-password', 'reset-password')->name('password.reset');
 Route::post('/reset-password', [ApiController::class, 'resetPassword']);
 
 // Supabase REST API Endpoints
-use App\Http\Controllers\ApiController;
-
 Route::prefix('api')->group(function () {
     Route::get('/sync', [ApiController::class, 'getSyncData'])->name('api.sync');
     Route::get('/budget', [ApiController::class, 'getBudget'])->name('api.budget.get');
@@ -63,6 +62,4 @@ Route::prefix('api')->group(function () {
     Route::post('/auth/update-password', [ApiController::class, 'updatePassword'])->name('api.auth.update_password');
     Route::post('/auth/forgot-password', [ApiController::class, 'forgotPassword'])->name('api.auth.forgot_password');
     Route::post('/auth/reset-password', [ApiController::class, 'resetPassword'])->name('api.auth.reset_password');
-
-    Route::get('/archive', [ApiController::class, 'getArchive'])->name('api.archive.index');
 });
