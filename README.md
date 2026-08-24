@@ -1,59 +1,276 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# 💰 BudgetKu — Aplikasi Manajemen Keuangan
 
-## About Laravel
+[![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white)](https://getbootstrap.com)
+[![Vite](https://img.shields.io/badge/Vite-7.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+**BudgetKu** adalah platform web manajemen keuangan pribadi (*personal finance management*) modern, intuitif, dan aman yang dirancang untuk membantu pengguna mengontrol arus kas, menyusun anggaran bulanan berbasis metode 50/30/20, melacak transaksi harian beserta bukti struk, serta menganalisis performa keuangan secara *real-time*.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+</div>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 📑 Daftar Isi
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- [Fitur Utama](#-fitur-utama)
+- [Teknologi / Tech Stack](#-teknologi--tech-stack)
+- [Prasyarat Sistem](#-prasyarat-sistem)
+- [Panduan Instalasi](#-panduan-instalasi)
+- [Konfigurasi Supabase](#-konfigurasi-supabase-sangat-penting)
+- [Cara Menjalankan Aplikasi](#-cara-menjalankan-aplikasi)
+- [Struktur Direktori Proyek](#-struktur-direktori-proyek)
+- [Pengembang](#-pengembang)
+- [Lisensi](#-lisensi)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## ✨ Fitur Utama
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 🔐 Autentikasi & Keamanan Multi-User (Supabase Auth)
+- **Registrasi 2 Langkah dengan Verifikasi Email OTP**: Kode OTP dikirimkan langsung ke kotak masuk (*inbox*) email asli pengguna menggunakan Supabase Auth Mailer resmi.
+- **Enkripsi Kata Sandi Database (Bcrypt)**: Seluruh kata sandi di-hash secara aman menggunakan algoritma Bcrypt (`$2y$12$...`) sebelum disimpan ke tabel database PostgreSQL Supabase.
+- **Proteksi Halaman (Route Guard)**: Membatasi akses menu utama hanya untuk sesi pengguna yang valid dan mencegah akses tanpa autentikasi.
+- **Lupa & Atur Ulang Kata Sandi**: Alur pemulihan kata sandi melalui tautan aman (*magic link*) dengan deteksi token kedaluwarsa (*expired token handler*) otomatis.
+- **Profil Pengguna**: Melihat ringkasan akun terverifikasi dan memperbarui kata sandi langsung dari dalam aplikasi.
 
-### Premium Partners
+### 📊 Dashboard Finansial Interaktif
+- **Ringkasan Arus Kas**: Kartu saldo total, pemasukan bulanan, pengeluaran riil, dan sisa anggaran yang diperbarui secara *real-time*.
+- **Grafik Analisis Visual**: Integrasi grafik interaktif (Chart.js) untuk melihat proporsi pengeluaran per kategori.
+- **Isolasi Data Pengguna**: Setiap data transaksi, anggaran, dan kategori terisolasi penuh berdasarkan `user_id` masing-masing akun.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 🎯 Perencanaan Anggaran Bulanan (Budget Setup)
+- **Metode 50/30/20**: Pengelompokan pengeluaran otomatis ke dalam Kebutuhan (*Needs* 50%), Keinginan (*Wants* 30%), dan Tabungan/Investasi (*Savings* 20%).
+- **Kategori & Sub-Kategori Dinamis**: Fleksibilitas menambah, mengedit, atau menghapus pos anggaran sesuai kebutuhan personal.
+- **Indikator Kesehatan Anggaran**: Notifikasi visual jika pengeluaran pada pos tertentu mendekati atau melampaui batas (*overbudget*).
 
-## Contributing
+### 📝 Pencatatan Transaksi Harian (Tracker)
+- **Pencatatan Cepat**: Input pemasukan dan pengeluaran harian lengkap dengan tanggal, kategori pos, dan deskripsi.
+- **Unggah Struk / Bukti Pembayaran**: Integrasi penyimpanan foto struk ke Supabase Storage Bucket (`receipts`).
+- **Realokasi Anggaran Otomatis**: Fitur penyesuaian otomatis antarpos anggaran saat terjadi defisit pada kategori tertentu.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 🎨 Antarmuka Modern & Bebas Gangguan
+- **Custom Modal Dialog**: Menggantikan seluruh popup bawaan browser (`alert()`, `confirm()`) dengan modal kustom modern Bootstrap 5.
+- **Tata Letak Presisi**: Desain antarmuka bebas *ghost scrollbar* yang terkunci rapi di tengah layar desktop maupun responsif di ponsel.
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## 🛠 Teknologi / Tech Stack
 
-## Security Vulnerabilities
+| Komponen | Teknologi | Keterangan |
+|---|---|---|
+| **Backend Framework** | [Laravel 12](https://laravel.com) | REST API, Routing, Mailer, Controller, & Scoping |
+| **Bahasa Pemrograman** | [PHP 8.2+](https://php.net) | Core backend runtime |
+| **Database & Auth** | [Supabase](https://supabase.com) (PostgreSQL) | Auth GoTrue, Database Relasional, & Storage Bucket |
+| **Frontend Styling** | [Bootstrap 5.3](https://getbootstrap.com) | Responsive Layout, Components, & Flexbox |
+| **Icon Pack** | [Bootstrap Icons](https://icons.getbootstrap.com) | Iconography |
+| **Frontend Logic** | Vanilla JavaScript (ES6 Modules) | Client-side controller, Supabase JS SDK v2 |
+| **Data Visualizer** | [Chart.js](https://www.chartjs.org/) | Diagram & Grafik Analisis Finansial |
+| **Build Tool & Bundler** | [Vite 7](https://vitejs.dev/) | Hot Module Replacement (HMR) & Asset Compilation |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## 📋 Prasyarat Sistem
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Pastikan perangkat Anda telah terpasang dependensi berikut:
+
+- **PHP** $\ge$ 8.2 (dengan ekstensi: `pdo_pgsql`, `pgsql`, `curl`, `mbstring`, `openssl`, `fileinfo`)
+- **Composer** $\ge$ 2.0
+- **Node.js** $\ge$ 18.x & **NPM**
+- **Git**
+- **Akun Supabase** (Gratis di [supabase.com](https://supabase.com))
+
+---
+
+## 🚀 Panduan Instalasi
+
+Ikuti langkah-langkah berikut untuk memasang dan menjalankan BudgetKu di lingkungan lokal (*local development*):
+
+### 1. Clone Repositori
+```bash
+git clone https://github.com/hafidznugraha/aplikasi-manajemen-uang.git
+cd aplikasi-manajemen-uang
+```
+
+### 2. Pasang Dependensi Backend (Composer)
+```bash
+composer install
+```
+
+### 3. Pasang Dependensi Frontend (NPM)
+```bash
+npm install
+```
+
+### 4. Salin & Konfigurasi File Environment
+Salin file template `.env.example` menjadi `.env`:
+
+**Windows (PowerShell / CMD):**
+```powershell
+copy .env.example .env
+```
+
+**Linux / macOS:**
+```bash
+cp .env.example .env
+```
+
+### 5. Generate Application Key
+```bash
+php artisan key:generate
+```
+
+---
+
+## ⚙️ Konfigurasi Supabase (Sangat Penting)
+
+Untuk menghubungkan aplikasi dengan layanan Supabase Database, Auth, dan Storage, lakukan langkah-langkah berikut:
+
+### 1. Dapatkan Kredensial Proyek Supabase
+Buka **Supabase Dashboard** $\rightarrow$ Pilih Proyek Anda $\rightarrow$ **Project Settings** $\rightarrow$ **API**:
+- `Project URL` (contoh: `https://xyzprojectref.supabase.co`)
+- `Project API Keys` $\rightarrow$ `anon` / `public` key
+
+### 2. Isi Variabel di File `.env`
+Buka file `.env` dan lengkapi bagian konfigurasi database dan Supabase:
+
+```env
+# Koneksi Database Supabase PostgreSQL
+DB_CONNECTION=pgsql
+DB_HOST=aws-0-ap-southeast-1.pooler.supabase.com
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=postgres.YOUR_PROJECT_REF
+DB_PASSWORD=YOUR_DATABASE_PASSWORD
+DB_SSLMODE=require
+
+# Kredensial Supabase API & Auth
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_KEY=YOUR_SUPABASE_ANON_PUBLIC_KEY
+SUPABASE_SECRET_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_STORAGE_BUCKET=receipts
+
+# Frontend Vite Supabase Keys
+VITE_SUPABASE_URL="${SUPABASE_URL}"
+VITE_SUPABASE_ANON_KEY="${SUPABASE_KEY}"
+```
+
+### 3. Pengaturan Supabase Authentication & Redirect URLs
+Di **Supabase Dashboard** $\rightarrow$ **Authentication** $\rightarrow$ **URL Configuration**:
+- **Site URL**: `http://127.0.0.1:8000`
+- **Redirect URLs**: Tambahkan pola redirect berikut:
+  - `http://127.0.0.1:8000/**`
+  - `http://localhost:8000/**`
+  - `http://127.0.0.1:8000/reset-password.html`
+  - `http://127.0.0.1:8000/reset-password`
+
+### 4. Pengaturan Template Email (Email Templates)
+Di **Supabase Dashboard** $\rightarrow$ **Authentication** $\rightarrow$ **Email Templates**:
+- **Confirm signup / Magic Link**: Pastikan menggunakan placeholder `{{ .Token }}` untuk kode OTP atau `{{ .ConfirmationURL }}` untuk tautan konfirmasi.
+- **Reset Password**: Pastikan menggunakan placeholder `{{ .ConfirmationURL }}` untuk tautan atur ulang kata sandi.
+
+### 5. Buat Storage Bucket untuk Struk Bukti Transaksi
+Di **Supabase Dashboard** $\rightarrow$ **Storage** $\rightarrow$ Buat Bucket baru bernama **`receipts`** dengan status *Public Bucket* agar foto struk dapat diakses oleh aplikasi.
+
+---
+
+## 💻 Cara Menjalankan Aplikasi
+
+Anda dapat menjalankan backend Laravel dan asset builder Vite secara bersamaan menggunakan salah satu cara di bawah ini:
+
+### Opsi 1: Menjalankan Sekaligus (Direkomendasikan)
+Gunakan perintah skrip bawaan:
+```bash
+composer run dev
+```
+*Perintah di atas akan menjalankan `php artisan serve`, `queue:listen`, dan `npm run dev` secara otomatis via Concurrently.*
+
+### Opsi 2: Menjalankan Secara Terpisah
+Buka 2 tab terminal terpisah:
+
+**Terminal 1 (Laravel Server):**
+```bash
+php artisan serve
+```
+
+**Terminal 2 (Vite Asset Server):**
+```bash
+npm run dev
+```
+
+Buka peramban (*browser*) Anda dan akses:
+👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+
+---
+
+## 📁 Struktur Direktori Proyek
+
+```plaintext
+aplikasi-manajemen-uang/
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── ApiController.php         # REST API controller & Supabase scoping
+│   │   ├── DashboardController.php   # Dashboard, Budget, & Arsip views
+│   │   └── TrackerController.php     # Daily tracker view
+│   ├── Mail/
+│   │   └── OtpVerificationMail.php   # Mailable OTP verification
+│   └── Models/
+│       ├── User.php                  # Model User dengan auto-Bcrypt hashing
+│       ├── Budget.php                # Model Anggaran Bulanan
+│       ├── Category.php              # Model Kategori Anggaran
+│       ├── Subcategory.php           # Model Sub-kategori Anggaran
+│       └── Transaction.php           # Model Transaksi Keuangan
+├── public/
+│   ├── css/
+│   │   └── style.css                 # Custom BudgetKu design system
+│   └── js/
+│       ├── modal-alert.js            # Custom modal notification engine
+│       ├── supabase.js               # Supabase JS SDK client connection
+│       ├── auth.js                   # Route Guard & session manager
+│       ├── login.js                  # Login handler
+│       ├── register.js               # 2-step OTP registration handler
+│       ├── forgot-password.js        # Password recovery email sender
+│       ├── reset-password.js         # Secure password update & hash validator
+│       ├── profile.js                # Profile manager & password updater
+│       ├── dashboard.js              # Dashboard logic & Chart.js renderer
+│       ├── budget.js                 # Monthly 50/30/20 budget setup
+│       ├── tracker.js                # Daily transaction tracker & receipt upload
+│       └── arsip.js                  # Historical archives & monthly filters
+├── resources/
+│   └── views/
+│       ├── index.blade.php           # Halaman Dashboard Finansial
+│       ├── budget.blade.php          # Halaman Setup Anggaran
+│       ├── tracker.blade.php         # Halaman Tracker Transaksi Harian
+│       ├── arsip.blade.php           # Halaman Arsip Keuangan
+│       ├── profile.blade.php         # Halaman Profil Pengguna
+│       ├── login.blade.php           # Halaman Masuk Akun
+│       ├── register.blade.php        # Halaman Pendaftaran & Verifikasi OTP
+│       ├── forgot-password.blade.php # Halaman Permintaan Reset Password
+│       ├── reset-password.blade.php  # Halaman Buat Password Baru
+│       └── emails/
+│           └── otp-verification.blade.php # Template Email HTML OTP
+├── routes/
+│   └── web.php                       # Web routes & REST API endpoints
+├── .env.example                      # Template variabel lingkungan & Supabase
+├── composer.json                     # PHP package dependencies
+└── package.json                      # Node.js package dependencies
+```
+
+---
+
+## 👨‍💻 Pengembang
+
+Proyek **BudgetKu** ini dirancang dan dikembangkan dengan dedikasi oleh:
+
+**Hafidz Nugraha**  
+GitHub: [@hafidznugraha](https://github.com/hafidznugraha)
+
+---
+
+## 📄 Lisensi
+
+Proyek ini dilisensikan di bawah lisensi terbuka [MIT License](LICENSE). Silakan gunakan dan kembangkan untuk kebutuhan Anda.
