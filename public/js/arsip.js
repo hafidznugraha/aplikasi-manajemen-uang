@@ -166,7 +166,7 @@ function renderProgressBars(archive) {
     
     if (archive.transactions) {
         archive.transactions.forEach(t => {
-            if (t.type === 'income') return;
+            if (t.type === 'income' || t.type === 'reallocation') return;
             if (spentByCategory[t.categoryId] !== undefined) {
                 spentByCategory[t.categoryId] += t.amount;
             }
@@ -213,12 +213,16 @@ function renderTransactionsTable(archive) {
     
     sortedTxns.forEach(txn => {
         const isIncome = txn.type === 'income';
+        const isReallocation = txn.type === 'reallocation';
         let catHtml = '';
         let amountHtml = '';
 
         if (isIncome) {
             catHtml = `<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle"><i class="bi bi-arrow-down-left me-1"></i>Pemasukan</span>`;
             amountHtml = `<span class="text-success fw-bold font-monospace">+${formatRupiah(txn.amount)}</span>`;
+        } else if (isReallocation) {
+            catHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"><i class="bi bi-arrow-left-right me-1"></i>Realokasi</span>`;
+            amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${formatRupiah(txn.amount)}</span>`;
         } else {
             let catName = 'Uncategorized';
             let subCatName = '';

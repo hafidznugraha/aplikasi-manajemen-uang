@@ -164,6 +164,7 @@
           <option value="">Semua Tipe</option>
           <option value="expense">Pengeluaran</option>
           <option value="income">Pemasukan</option>
+          <option value="reallocation">Realokasi</option>
         </select>
       </div>
       <div class="flex-grow-1" style="min-width: 180px;">

@@ -17,6 +17,7 @@ class Transaction extends Model
         'user_id',
         'budget_id',
         'type',
+        'is_system',
         'category_id',
         'subcategory_id',
         'date',
@@ -28,6 +29,7 @@ class Transaction extends Model
     protected $casts = [
         'date' => 'date',
         'amount' => 'integer',
+        'is_system' => 'boolean',
     ];
 
     public function user(): BelongsTo

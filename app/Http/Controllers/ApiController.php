@@ -70,6 +70,8 @@ class ApiController extends Controller
                 return [
                     'id' => (string) $t->id,
                     'type' => $t->type ?? 'expense',
+                    'is_system' => (bool) $t->is_system,
+                    'isSystem' => (bool) $t->is_system,
                     'date' => $t->date->format('Y-m-d'),
                     'categoryId' => $t->category_id ? (string) $t->category_id : null,
                     'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
@@ -84,7 +86,7 @@ class ApiController extends Controller
                 return [
                     'month' => $b->month,
                     'totalBudget' => (int) $b->total_budget,
-                    'totalSpent' => (int) $b->transactions->where('type', '!=', 'income')->sum('amount'),
+                    'totalSpent' => (int) $b->transactions->where('type', 'expense')->sum('amount'),
                     'totalIncome' => (int) $b->transactions->where('type', 'income')->sum('amount'),
                     'archivedAt' => $b->updated_at->toISOString(),
                     'categories' => $b->categories->map(function ($cat) {
@@ -107,6 +109,8 @@ class ApiController extends Controller
                         return [
                             'id' => (string) $t->id,
                             'type' => $t->type ?? 'expense',
+                            'is_system' => (bool) $t->is_system,
+                            'isSystem' => (bool) $t->is_system,
                             'date' => $t->date->format('Y-m-d'),
                             'categoryId' => $t->category_id ? (string) $t->category_id : null,
                             'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
@@ -338,6 +342,8 @@ class ApiController extends Controller
             return [
                 'id' => (string) $t->id,
                 'type' => $t->type ?? 'expense',
+                'is_system' => (bool) $t->is_system,
+                'isSystem' => (bool) $t->is_system,
                 'date' => $t->date->format('Y-m-d'),
                 'categoryId' => $t->category_id ? (string) $t->category_id : null,
                 'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
@@ -361,7 +367,8 @@ class ApiController extends Controller
 
         $rules = [
             'date' => 'required|date',
-            'type' => 'nullable|string|in:expense,income',
+            'type' => 'nullable|string|in:expense,income,reallocation',
+            'is_system' => 'nullable|boolean',
             'subcategory_id' => 'nullable|exists:subcategories,id',
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:1',
@@ -370,7 +377,7 @@ class ApiController extends Controller
             'month' => 'nullable|string',
         ];
 
-        if ($type === 'income') {
+        if ($type === 'income' || $type === 'reallocation') {
             $rules['category_id'] = 'nullable';
         } else {
             $rules['category_id'] = 'required|exists:categories,id';
@@ -392,10 +399,13 @@ class ApiController extends Controller
             $receiptUrl = $this->storageService->uploadReceipt($request->input('receipt_data'));
         }
 
+        $isSystem = filter_var($request->input('is_system', $request->input('isSystem', false)), FILTER_VALIDATE_BOOLEAN);
+
         $transaction = Transaction::create([
             'budget_id' => $budget->id,
             'type' => $type,
-            'category_id' => $type === 'income' ? ($request->input('category_id') ?: null) : $request->input('category_id'),
+            'is_system' => $isSystem,
+            'category_id' => in_array($type, ['income', 'reallocation']) ? ($request->input('category_id') ?: null) : $request->input('category_id'),
             'subcategory_id' => $request->input('subcategory_id'),
             'date' => $request->input('date'),
             'description' => $request->input('description'),
@@ -406,6 +416,8 @@ class ApiController extends Controller
         return response()->json([
             'id' => (string) $transaction->id,
             'type' => $transaction->type ?? 'expense',
+            'is_system' => (bool) $transaction->is_system,
+            'isSystem' => (bool) $transaction->is_system,
             'date' => $transaction->date->format('Y-m-d'),
             'categoryId' => $transaction->category_id ? (string) $transaction->category_id : null,
             'subcategoryId' => $transaction->subcategory_id ? (string) $transaction->subcategory_id : null,
@@ -424,9 +436,13 @@ class ApiController extends Controller
     {
         $transaction = Transaction::findOrFail($id);
 
+        if ($transaction->is_system) {
+            return response()->json(['message' => 'Transaksi sistem tidak dapat diubah.'], 403);
+        }
+
         $request->validate([
             'date' => 'sometimes|required|date',
-            'type' => 'nullable|string|in:expense,income',
+            'type' => 'nullable|string|in:expense,income,reallocation',
             'category_id' => 'nullable',
             'subcategory_id' => 'nullable|exists:subcategories,id',
             'description' => 'sometimes|required|string|max:255',
@@ -459,6 +475,8 @@ class ApiController extends Controller
         return response()->json([
             'id' => (string) $transaction->id,
             'type' => $transaction->type ?? 'expense',
+            'is_system' => (bool) $transaction->is_system,
+            'isSystem' => (bool) $transaction->is_system,
             'date' => $transaction->date->format('Y-m-d'),
             'categoryId' => $transaction->category_id ? (string) $transaction->category_id : null,
             'subcategoryId' => $transaction->subcategory_id ? (string) $transaction->subcategory_id : null,
@@ -476,6 +494,10 @@ class ApiController extends Controller
     public function deleteTransaction($id): JsonResponse
     {
         $transaction = Transaction::findOrFail($id);
+
+        if ($transaction->is_system) {
+            return response()->json(['message' => 'Transaksi sistem tidak dapat dihapus.'], 403);
+        }
 
         if ($transaction->receipt_url) {
             $this->storageService->deleteReceipt($transaction->receipt_url);

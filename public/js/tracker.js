@@ -518,6 +518,20 @@ async function confirmAndReallocate() {
   }
 
   const [sourceCatId, sourceSubId] = sourceVal.split('|');
+  const sourceCat = getCategoryById(sourceCatId);
+  const targetCat = pendingOverbudget.targetCat;
+
+  let sourceFullName = sourceCat ? sourceCat.name : 'Kategori';
+  if (sourceSubId && sourceCat && Array.isArray(sourceCat.subcategories)) {
+    const sourceSub = sourceCat.subcategories.find(s => s.id == sourceSubId);
+    if (sourceSub) sourceFullName = `${sourceCat.name} › ${sourceSub.name}`;
+  }
+
+  let targetFullName = targetCat ? targetCat.name : 'Kategori';
+  if (pendingOverbudget.targetSubId && targetCat && Array.isArray(targetCat.subcategories)) {
+    const targetSub = targetCat.subcategories.find(s => s.id == pendingOverbudget.targetSubId);
+    if (targetSub) targetFullName = `${targetCat.name} › ${targetSub.name}`;
+  }
 
   const confirmBtn = document.getElementById('btn-confirm-reallocate');
   if (confirmBtn) {
@@ -535,7 +549,19 @@ async function confirmAndReallocate() {
     );
 
     if (success) {
-      // Simpan transaksi setelah budget berhasil dialihkan
+      // 1. Injeksi Transaksi Sistem (Audit Trail)
+      const auditTxn = {
+        type: 'reallocation',
+        is_system: true,
+        date: pendingOverbudget.txnData.date || (new Date().toISOString().split('T')[0]),
+        categoryId: sourceCatId,
+        subcategoryId: sourceSubId || null,
+        description: `Realokasi otomatis dari ${sourceFullName} ke ${targetFullName}`,
+        amount: pendingOverbudget.deficit,
+      };
+      await addTransaction(auditTxn);
+
+      // 2. Simpan transaksi pengeluaran asli setelah budget berhasil dialihkan
       await addTransaction(pendingOverbudget.txnData, pendingOverbudget.file);
 
       closeOverbudgetDialog();
@@ -623,8 +649,11 @@ async function renderTable() {
   
   for (const txn of pageItems) {
     const isIncome = txn.type === 'income';
+    const isReallocation = txn.type === 'reallocation';
+    const isSystem = txn.is_system || txn.isSystem || isReallocation;
     let categoryHtml = '';
     let amountHtml = '';
+    let actionHtml = '';
 
     if (isIncome) {
       categoryHtml = `
@@ -633,13 +662,20 @@ async function renderTable() {
         </span>
       `;
       amountHtml = `<span class="text-success fw-bold font-monospace">+${formatRupiah(txn.amount)}</span>`;
+    } else if (isReallocation) {
+      categoryHtml = `
+        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle rounded-pill fw-semibold px-2 py-1">
+          <i class="bi bi-arrow-left-right me-1"></i>Realokasi
+        </span>
+      `;
+      amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${formatRupiah(txn.amount)}</span>`;
     } else {
       const category = getCategoryById(txn.categoryId);
       const catName = category ? category.name : 'Umum';
       const isSavings = category && (category.isSavings || category.is_savings);
       
       let subName = '';
-      if (txn.subcategoryId && category) {
+      if (txn.subcategoryId && category && Array.isArray(category.subcategories)) {
         const sub = category.subcategories.find(s => s.id === txn.subcategoryId);
         if (sub) subName = `<div class="small text-muted">${sub.name}</div>`;
       }
@@ -652,6 +688,21 @@ async function renderTable() {
         ${subName}
       `;
       amountHtml = `<span class="fw-bold font-monospace text-dark">-${formatRupiah(txn.amount)}</span>`;
+    }
+
+    if (isSystem) {
+      actionHtml = `
+        <span class="badge bg-light text-muted border px-2 py-1 small" title="Transaksi sistem dibuat otomatis (tidak dapat diubah)">
+          <i class="bi bi-lock-fill me-1"></i>Sistem
+        </span>
+      `;
+    } else {
+      actionHtml = `
+        <div class="btn-group">
+          <button class="btn btn-sm btn-light" onclick="openEditDialog('${txn.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-light text-danger" onclick="confirmDelete('${txn.id}')" title="Hapus"><i class="bi bi-trash"></i></button>
+        </div>
+      `;
     }
     
     let receiptHtml = '<span class="text-muted">—</span>';
@@ -670,10 +721,7 @@ async function renderTable() {
       <td class="text-end">${amountHtml}</td>
       <td class="text-center">${receiptHtml}</td>
       <td class="text-end pe-4">
-        <div class="btn-group">
-          <button class="btn btn-sm btn-light" onclick="openEditDialog('${txn.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-sm btn-light text-danger" onclick="confirmDelete('${txn.id}')" title="Hapus"><i class="bi bi-trash"></i></button>
-        </div>
+        ${actionHtml}
       </td>
     `;
     tbody.appendChild(tr);
@@ -746,6 +794,10 @@ function showReceiptPreview(txnId, url) {
 function openEditDialog(txnId) {
   const txn = currentTransactions.find(t => t.id == txnId);
   if (!txn) return;
+  if (txn.is_system || txn.isSystem || txn.type === 'reallocation') {
+    alert('Transaksi sistem tidak dapat diubah.');
+    return;
+  }
   
   document.getElementById('edit-txn-id').value = txn.id;
   const isIncome = txn.type === 'income';
@@ -843,6 +895,11 @@ async function submitEditTransaction() {
 let txnToDelete = null;
 
 function confirmDelete(txnId) {
+  const txn = currentTransactions.find(t => t.id == txnId);
+  if (txn && (txn.is_system || txn.isSystem || txn.type === 'reallocation')) {
+    alert('Transaksi sistem tidak dapat dihapus.');
+    return;
+  }
   txnToDelete = txnId;
   const dialog = document.getElementById('deleteConfirmDialog');
   const deleteBtn = document.getElementById('btn-confirm-delete');

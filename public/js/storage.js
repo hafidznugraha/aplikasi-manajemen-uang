@@ -354,7 +354,7 @@ function getSpentBySubcategory() {
   const transactions = getTransactions();
   const result = {};
   transactions.forEach((txn) => {
-    if (txn.type === 'income') return;
+    if (txn.type === 'income' || txn.type === 'reallocation') return;
     if (txn.subcategoryId) {
       if (!result[txn.subcategoryId]) result[txn.subcategoryId] = 0;
       result[txn.subcategoryId] += txn.amount;
@@ -400,6 +400,9 @@ function getTransactions() {
 async function addTransaction(txn, file = null) {
   const formData = new FormData();
   formData.append('type', txn.type || 'expense');
+  if (txn.is_system !== undefined) {
+    formData.append('is_system', txn.is_system ? '1' : '0');
+  }
   formData.append('date', txn.date);
   if (txn.categoryId) {
     formData.append('category_id', txn.categoryId);
@@ -525,7 +528,7 @@ function getSpentByCategory() {
   const transactions = getTransactions();
   const result = {};
   transactions.forEach((txn) => {
-    if (txn.type === 'income') return; // Hanya hitung pengeluaran untuk alokasi kategori
+    if (txn.type === 'income' || txn.type === 'reallocation') return; // Hanya hitung pengeluaran riil untuk alokasi kategori
     if (txn.categoryId) {
       if (!result[txn.categoryId]) result[txn.categoryId] = 0;
       result[txn.categoryId] += txn.amount;
@@ -537,7 +540,7 @@ function getSpentByCategory() {
 function getTotalSpent() {
   const transactions = getTransactions();
   return transactions
-    .filter(t => t.type !== 'income')
+    .filter(t => t.type !== 'income' && t.type !== 'reallocation')
     .reduce((sum, txn) => sum + txn.amount, 0);
 }
 
