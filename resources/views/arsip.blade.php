@@ -18,6 +18,9 @@
   <meta name="supabase-url" content="{{ env('SUPABASE_URL') }}">
   <meta name="supabase-key" content="{{ env('SUPABASE_KEY') }}">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Auth JS (Route Guard) -->
+  <script src="{{ asset('js/auth.js') }}"></script>
 </head>
 <body class="bg-light">
 
@@ -45,9 +48,30 @@
           <a class="nav-link active" aria-current="page" href="{{ route('arsip.index') }}"><i class="bi bi-archive"></i> Arsip</a>
         </li>
       </ul>
-      <span class="month-selector" id="current-month-display">
-        <i class="bi bi-calendar3"></i>
-      </span>
+      <div class="d-flex align-items-center gap-2 gap-md-3">
+        <span class="month-selector" id="current-month-display">
+          <i class="bi bi-calendar3"></i>
+        </span>
+        
+        <!-- User Profile Dropdown & Logout -->
+        <div class="dropdown" id="user-profile-dropdown">
+          <button class="btn btn-light btn-sm rounded-pill d-flex align-items-center gap-2 px-3 py-1 border shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-circle text-primary fs-5"></i>
+            <span class="fw-semibold small text-dark d-none d-sm-inline" id="navbar-user-name">User</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 mt-2 p-2" style="min-width: 200px;">
+            <li class="px-2 py-1 mb-1 border-bottom">
+              <p class="small text-muted mb-0" style="font-size: 0.75rem;">Masuk sebagai:</p>
+              <p class="fw-bold small text-dark mb-0 text-truncate" id="navbar-user-email">user@test.com</p>
+            </li>
+            <li>
+              <a class="dropdown-item text-danger rounded-2 d-flex align-items-center gap-2 py-2" href="#" onclick="handleLogout(event)">
+                <i class="bi bi-box-arrow-right"></i> Keluar
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </nav>

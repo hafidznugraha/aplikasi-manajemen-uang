@@ -1,16 +1,49 @@
 /* ============================================================
    BudgetKu — High-Performance Realtime Data Layer
    
+   - Multi-User Isolated Storage Architecture
    - Instant Server-Hydrated Boot (0ms initial latency)
    - Supabase Realtime WebSocket Subscriptions (Live sync across tabs & devices)
    - Optimistic UI Updates
    ============================================================ */
+
+/**
+ * Dapatkan data pengguna yang sedang login dari localStorage
+ * @returns {object|null}
+ */
+function getActiveUser() {
+  try {
+    const userStr = localStorage.getItem('budgetku_user');
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Dapatkan ID pengguna yang sedang login
+ * @returns {string}
+ */
+function getActiveUserId() {
+  const user = getActiveUser();
+  return user && user.id ? user.id : 'usr-default';
+}
+
+// Expose fungsi identifikasi user ke window global
+window.getActiveUser = getActiveUser;
+window.getActiveUserId = getActiveUserId;
+
+function getCacheKey() {
+  return 'budgetku_hot_cache_' + getActiveUserId();
+}
 
 // In-memory data store
 let _currentBudget = {
   month: getCurrentMonth(),
   totalBudget: 0,
   categories: [],
+  user_id: getActiveUserId(),
+  userId: getActiveUserId(),
 };
 let _currentTransactions = [];
 let _archiveList = [];
@@ -18,26 +51,40 @@ let _supabaseClient = null;
 
 /**
  * Inisialisasi Storage:
- * 1. Instant boot dari localStorage Hot-Cache (0ms delay!)
+ * 1. Instant boot dari localStorage Hot-Cache milik user aktif (0ms delay!)
  * 2. Background sync kilat via 1 single request /api/sync
  * 3. Setup Supabase Realtime WebSocket
  */
 async function initStorage() {
   const month = getCurrentMonth();
+  const userId = getActiveUserId();
 
-  // 1. Instant boot dari Local Hot-Cache jika ada (0ms latency)
+  // Reset in-memory state agar bersih untuk user saat ini
+  _currentBudget = {
+    month: month,
+    totalBudget: 0,
+    categories: [],
+    user_id: userId,
+    userId: userId,
+  };
+  _currentTransactions = [];
+  _archiveList = [];
+
+  // 1. Instant boot dari Local Hot-Cache jika ada untuk user ini (0ms latency)
   try {
-    const cached = localStorage.getItem('budgetku_hot_cache');
+    const cached = localStorage.getItem(getCacheKey());
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed.budget && parsed.budget.month === month) {
+      if (parsed.budget && parsed.budget.month === month && (!parsed.budget.user_id || parsed.budget.user_id === userId)) {
         _currentBudget = parsed.budget;
+        _currentBudget.user_id = userId;
+        _currentBudget.userId = userId;
       }
       if (Array.isArray(parsed.transactions)) {
-        _currentTransactions = parsed.transactions;
+        _currentTransactions = parsed.transactions.filter(t => !t.user_id || t.user_id === userId);
       }
       if (Array.isArray(parsed.archives)) {
-        _archiveList = parsed.archives;
+        _archiveList = parsed.archives.filter(a => !a.user_id || a.user_id === userId);
       }
     }
   } catch (e) {}
@@ -50,14 +97,16 @@ async function initStorage() {
 }
 
 /**
- * Simpan hot-cache ke localStorage (agar instan saat tab dibuka kapan pun)
+ * Simpan hot-cache ke localStorage terisolasi per user
  */
 function persistHotCache() {
   try {
-    localStorage.setItem('budgetku_hot_cache', JSON.stringify({
+    const userId = getActiveUserId();
+    localStorage.setItem(getCacheKey(), JSON.stringify({
+      user_id: userId,
       budget: _currentBudget,
-      transactions: _currentTransactions,
-      archives: _archiveList,
+      transactions: _currentTransactions.filter(t => !t.user_id || t.user_id === userId),
+      archives: _archiveList.filter(a => !a.user_id || a.user_id === userId),
     }));
   } catch (e) {}
 }
@@ -107,7 +156,8 @@ function initSupabaseRealtime() {
  */
 async function syncFromSupabase(month) {
   try {
-    const res = await fetch(`/api/sync?month=${month}`, {
+    const userId = getActiveUserId();
+    const res = await fetch(`/api/sync?month=${month}&user_id=${encodeURIComponent(userId)}`, {
       headers: { 'Accept': 'application/json' }
     });
 
@@ -120,21 +170,49 @@ async function syncFromSupabase(month) {
         archives: _archiveList,
       });
 
-      const nextStr = JSON.stringify({
-        budget: data.budget || _currentBudget,
-        transactions: data.transactions || _currentTransactions,
-        archives: data.archives || _archiveList,
-      });
+      if (data.budget) {
+        const b = data.budget;
+        b.user_id = b.user_id || userId;
+        b.userId = b.userId || userId;
+        if (Array.isArray(b.categories)) {
+          b.categories = b.categories.map(c => ({
+            ...c,
+            user_id: c.user_id || userId,
+            userId: c.userId || userId,
+          }));
+        }
+        _currentBudget = b;
+      }
 
-      const hasChanged = prevStr !== nextStr;
+      if (Array.isArray(data.transactions)) {
+        _currentTransactions = data.transactions
+          .filter(t => !t.user_id || t.user_id === userId)
+          .map(t => ({
+            ...t,
+            user_id: t.user_id || userId,
+            userId: t.userId || userId,
+          }));
+      }
 
-      if (data.budget) _currentBudget = data.budget;
-      if (Array.isArray(data.transactions)) _currentTransactions = data.transactions;
-      if (Array.isArray(data.archives)) _archiveList = data.archives;
+      if (Array.isArray(data.archives)) {
+        _archiveList = data.archives
+          .filter(a => !a.user_id || a.user_id === userId)
+          .map(a => ({
+            ...a,
+            user_id: a.user_id || userId,
+            userId: a.userId || userId,
+          }));
+      }
 
       persistHotCache();
 
-      // Jika data berbeda dari memori lokal (misal baru pertama kali load), render otomatis
+      const nextStr = JSON.stringify({
+        budget: _currentBudget,
+        transactions: _currentTransactions,
+        archives: _archiveList,
+      });
+
+      const hasChanged = prevStr !== nextStr;
       if (hasChanged) {
         triggerActivePageRender();
       }
@@ -168,18 +246,35 @@ function triggerActivePageRender() {
 /* ---------- Budget (Supabase Database) ---------- */
 
 function getBudget() {
+  const userId = getActiveUserId();
+  if (!_currentBudget) {
+    _currentBudget = {
+      month: getCurrentMonth(),
+      totalBudget: 0,
+      categories: [],
+      user_id: userId,
+      userId: userId,
+    };
+  }
   return _currentBudget;
 }
 
 function saveBudget(budget) {
+  const userId = getActiveUserId();
+  budget.user_id = userId;
+  budget.userId = userId;
   _currentBudget = budget;
+  persistHotCache();
 }
 
 /**
  * Update total budget (Optimistic + Background Async Sync)
  */
 async function updateTotalBudget(amount) {
+  const userId = getActiveUserId();
   _currentBudget.totalBudget = amount;
+  _currentBudget.user_id = userId;
+  _currentBudget.userId = userId;
   persistHotCache();
 
   try {
@@ -192,12 +287,15 @@ async function updateTotalBudget(amount) {
       body: JSON.stringify({
         month: _currentBudget.month || getCurrentMonth(),
         amount: amount,
+        user_id: userId,
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
       _currentBudget.totalBudget = data.totalBudget;
+      _currentBudget.user_id = userId;
+      _currentBudget.userId = userId;
       persistHotCache();
       return true;
     }
@@ -211,6 +309,7 @@ async function updateTotalBudget(amount) {
  * Tambah kategori baru
  */
 async function addCategory(name, budgetAmount, subcategories = [], isSavings = false) {
+  const userId = getActiveUserId();
   try {
     const res = await fetch('/api/categories', {
       method: 'POST',
@@ -224,11 +323,14 @@ async function addCategory(name, budgetAmount, subcategories = [], isSavings = f
         budget: budgetAmount,
         subcategories: subcategories,
         is_savings: isSavings,
+        user_id: userId,
       }),
     });
 
     if (res.ok) {
       const newCat = await res.json();
+      newCat.user_id = userId;
+      newCat.userId = userId;
       if (!_currentBudget.categories) _currentBudget.categories = [];
       _currentBudget.categories.push(newCat);
       persistHotCache();
@@ -383,7 +485,9 @@ async function deleteCategory(categoryId) {
 }
 
 function getCategories() {
-  return _currentBudget && _currentBudget.categories ? _currentBudget.categories : [];
+  const userId = getActiveUserId();
+  const allCats = _currentBudget && _currentBudget.categories ? _currentBudget.categories : [];
+  return allCats.filter(c => !c.user_id || c.user_id === userId);
 }
 
 function getCategoryById(categoryId) {
@@ -394,12 +498,18 @@ function getCategoryById(categoryId) {
 /* ---------- Transactions & Receipts ---------- */
 
 function getTransactions() {
-  return _currentTransactions || [];
+  const userId = getActiveUserId();
+  return (_currentTransactions || []).filter(t => !t.user_id || t.user_id === userId);
 }
 
 async function addTransaction(txn, file = null) {
+  const userId = getActiveUserId();
+  txn.user_id = userId;
+  txn.userId = userId;
+
   const formData = new FormData();
   formData.append('type', txn.type || 'expense');
+  formData.append('user_id', userId);
   if (txn.is_system !== undefined) {
     formData.append('is_system', txn.is_system ? '1' : '0');
   }
@@ -429,6 +539,8 @@ async function addTransaction(txn, file = null) {
 
     if (res.ok) {
       const newTxn = await res.json();
+      newTxn.user_id = userId;
+      newTxn.userId = userId;
       _currentTransactions.unshift(newTxn);
       persistHotCache();
       return newTxn;
@@ -440,7 +552,12 @@ async function addTransaction(txn, file = null) {
 }
 
 async function updateTransaction(txnId, updates, file = null) {
+  const userId = getActiveUserId();
+  updates.user_id = userId;
+  updates.userId = userId;
+
   const formData = new FormData();
+  formData.append('user_id', userId);
   if (updates.type) formData.append('type', updates.type);
   if (updates.date) formData.append('date', updates.date);
   if (updates.categoryId !== undefined) formData.append('category_id', updates.categoryId || '');
@@ -464,6 +581,8 @@ async function updateTransaction(txnId, updates, file = null) {
 
     if (res.ok) {
       const updatedTxn = await res.json();
+      updatedTxn.user_id = userId;
+      updatedTxn.userId = userId;
       const idx = _currentTransactions.findIndex(t => t.id == txnId);
       if (idx !== -1) {
         _currentTransactions[idx] = updatedTxn;
@@ -507,10 +626,14 @@ async function saveReceipt(id, file, filename) {
 
     if (res.ok) {
       const updatedTxn = await res.json();
+      const userId = getActiveUserId();
+      updatedTxn.user_id = userId;
+      updatedTxn.userId = userId;
       const idx = _currentTransactions.findIndex(t => t.id == id);
       if (idx !== -1) {
         _currentTransactions[idx] = updatedTxn;
       }
+      persistHotCache();
     }
   } catch (err) {
     console.error('Gagal upload struk:', err);
@@ -554,7 +677,8 @@ function getTotalIncome() {
 /* ---------- Archive ---------- */
 
 function getArchive() {
-  return _archiveList || [];
+  const userId = getActiveUserId();
+  return (_archiveList || []).filter(a => !a.user_id || a.user_id === userId);
 }
 
 async function checkMonthTransition() {}

@@ -486,6 +486,7 @@ async function submitTransaction() {
   }
 
   const txnData = {
+    user_id: (typeof getActiveUserId === 'function' ? getActiveUserId() : null),
     type,
     date,
     categoryId,
@@ -730,6 +731,7 @@ async function confirmAndReallocate() {
     if (success) {
       // 1. Injeksi Transaksi Sistem (Audit Trail)
       const auditTxn = {
+        user_id: (typeof getActiveUserId === 'function' ? getActiveUserId() : null),
         type: 'reallocation',
         is_system: true,
         date: pendingOverbudget.txnData.date || (new Date().toISOString().split('T')[0]),

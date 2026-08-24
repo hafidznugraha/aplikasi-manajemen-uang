@@ -21,6 +21,10 @@ Route::get('/arsip', [DashboardController::class, 'arsip'])->name('arsip.index')
 // Route Tracker Harian
 Route::get('/tracker', [TrackerController::class, 'index'])->name('tracker.index');
 
+// Route Autentikasi
+Route::view('/login', 'login')->name('login');
+Route::view('/register', 'register')->name('register');
+
 // Supabase REST API Endpoints
 use App\Http\Controllers\ApiController;
 
