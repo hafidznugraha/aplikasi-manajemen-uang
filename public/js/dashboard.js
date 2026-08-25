@@ -273,6 +273,7 @@ function renderCategoryProgress(budget) {
   
   const categories = typeof window.getCategories === 'function' ? window.getCategories() : [];
   const spentByCategory = typeof window.getSpentByCategory === 'function' ? window.getSpentByCategory() : {};
+  const allTransactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
 
   if (categories.length === 0) {
     container.innerHTML = '<p class="text-muted small">Belum ada kategori budget.</p>';
@@ -309,6 +310,45 @@ function renderCategoryProgress(budget) {
       remainingHtml = `<small class="text-muted d-block mt-1">Sisa: ${formattedRemaining}</small>`;
     }
 
+    // Kalkulasi dan render rincian sub-kategori jika tersedia
+    let subcategoriesHtml = '';
+    if (Array.isArray(category.subcategories) && category.subcategories.length > 0) {
+      const subItems = category.subcategories.map(subcat => {
+        const subcatBudget = Number(subcat.budget != null ? subcat.budget : (subcat.budget_amount != null ? subcat.budget_amount : 0));
+        
+        // Hitung total pengeluaran spesifik untuk sub-kategori ini
+        const subcatSpent = allTransactions.reduce((sum, txn) => {
+          const type = txn.type || 'expense';
+          const isSystem = !!(txn.is_system || txn.isSystem);
+          if (type !== 'expense' || isSystem) return sum;
+
+          const matchCat = String(txn.categoryId || txn.category_id || '') === String(category.id) || txn.category === category.name;
+          const matchSubcat = String(txn.subcategoryId || txn.subcategory_id || '') === String(subcat.id) || 
+                              (subcat.name && (txn.subcategory === subcat.name || txn.subcategoryName === subcat.name));
+
+          if (matchCat && matchSubcat) {
+            return sum + (Number(txn.amount) || 0);
+          }
+          return sum;
+        }, 0);
+
+        const subcatRemaining = subcatBudget - subcatSpent;
+        const formattedSubSpent = window.formatRupiah ? window.formatRupiah(subcatSpent) : 'Rp ' + subcatSpent.toLocaleString('id-ID');
+        const formattedSubBudget = window.formatRupiah ? window.formatRupiah(subcatBudget) : 'Rp ' + subcatBudget.toLocaleString('id-ID');
+
+        if (subcatRemaining < 0) {
+          const overspent = Math.abs(subcatRemaining);
+          const formattedOver = window.formatRupiah ? window.formatRupiah(overspent) : 'Rp ' + overspent.toLocaleString('id-ID');
+          return `<li class="mb-1 text-danger"><i class="bi bi-arrow-return-right me-1 text-danger"></i> <strong>${subcat.name}</strong>: ${formattedSubSpent} / ${formattedSubBudget} &mdash; Sisa: -${formattedOver}</li>`;
+        } else {
+          const formattedSubRem = window.formatRupiah ? window.formatRupiah(subcatRemaining) : 'Rp ' + subcatRemaining.toLocaleString('id-ID');
+          return `<li class="mb-1"><i class="bi bi-arrow-return-right me-1 text-muted"></i> <strong>${subcat.name}</strong>: ${formattedSubSpent} / ${formattedSubBudget} &mdash; Sisa: ${formattedSubRem}</li>`;
+        }
+      }).join('');
+
+      subcategoriesHtml = `<ul class="list-unstyled ms-3 mt-2 mb-2 small text-secondary">${subItems}</ul>`;
+    }
+
     const div = document.createElement('div');
     div.className = 'mb-3 category-progress';
     div.innerHTML = `
@@ -320,6 +360,7 @@ function renderCategoryProgress(budget) {
         <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${Math.min(percentage, 100)}%" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
       ${remainingHtml}
+      ${subcategoriesHtml}
     `;
     container.appendChild(div);
   });
