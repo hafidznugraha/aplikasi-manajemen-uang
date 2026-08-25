@@ -92,15 +92,15 @@
     </div>
 
     <!-- Page Header -->
-    <div class="page-header d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
       <div>
         <h2 class="h4 mb-1 fw-bold text-dark">Tracker Harian</h2>
         <p class="text-muted small mb-0">Catat dan pantau arus pengeluaran serta pemasukan tambahan Anda</p>
       </div>
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end w-100 w-md-auto">
         <!-- Export Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-outline-secondary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-outline-secondary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center justify-content-center gap-2 dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-download"></i> Ekspor
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2">
@@ -126,17 +126,17 @@
           </ul>
         </div>
 
-        <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+        <button class="btn btn-primary px-3 py-2 fw-semibold shadow-sm d-flex align-items-center justify-content-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
           <i class="bi bi-plus-lg"></i> Tambah Transaksi
         </button>
       </div>
     </div>
 
     <!-- Filter Bar -->
-    <div class="filter-bar bg-white p-3 rounded-4 shadow-sm mb-4 d-flex flex-wrap gap-3 align-items-center">
-      <!-- Dropdown Tipe & Kategori (Kiri) -->
-      <div class="d-flex flex-wrap gap-3 align-items-center">
-        <div style="min-width: 200px;">
+    <div class="filter-bar bg-white p-3 rounded-4 shadow-sm mb-4">
+      <div class="row g-3 align-items-end">
+        <!-- Dropdown Tipe -->
+        <div class="col-12 col-md-3">
           <select id="filter-type" onchange="applyFilters()">
             <option value="">Semua Tipe</option>
             <option value="expense">Pengeluaran</option>
@@ -144,24 +144,30 @@
             <option value="reallocation">Realokasi</option>
           </select>
         </div>
-        <div style="min-width: 200px;">
+
+        <!-- Dropdown Kategori -->
+        <div class="col-12 col-md-3">
           <select id="filter-category" onchange="applyFilters()">
             <option value="">Semua Kategori</option>
           </select>
         </div>
-      </div>
 
-      <!-- Filter Tanggal & Tombol Reset (Kanan) -->
-      <div class="ms-auto d-flex flex-wrap gap-2 align-items-center">
-        <div class="d-flex align-items-center gap-2">
-          <label for="filter-date-start" class="text-muted small mb-0 fw-medium">Dari</label>
-          <input type="date" class="form-control form-control-sm rounded-3" id="filter-date-start" onchange="applyFilters()">
+        <!-- Filter Rentang Tanggal: Dari -->
+        <div class="col-6 col-md-2">
+          <label for="filter-date-start" class="form-label text-muted small mb-1 fw-medium">Dari</label>
+          <input type="date" class="form-control rounded-3" id="filter-date-start" onchange="applyFilters()">
         </div>
-        <div class="d-flex align-items-center gap-2">
-          <label for="filter-date-end" class="text-muted small mb-0 fw-medium">Sampai</label>
-          <input type="date" class="form-control form-control-sm rounded-3" id="filter-date-end" onchange="applyFilters()">
+
+        <!-- Filter Rentang Tanggal: Sampai -->
+        <div class="col-6 col-md-2">
+          <label for="filter-date-end" class="form-label text-muted small mb-1 fw-medium">Sampai</label>
+          <input type="date" class="form-control rounded-3" id="filter-date-end" onchange="applyFilters()">
         </div>
-        <button class="btn btn-sm btn-outline-secondary rounded-3 px-3 py-1 fw-semibold" onclick="resetFilters()">Reset</button>
+
+        <!-- Tombol Reset -->
+        <div class="col-12 col-md-auto mt-3 mt-md-0">
+          <button class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-semibold w-100" onclick="resetFilters()">Reset</button>
+        </div>
       </div>
     </div>
 
