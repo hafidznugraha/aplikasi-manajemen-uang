@@ -1,3 +1,9 @@
+/* ============================================================
+   BudgetKu — Setup Budget Module (budget.js)
+   Refactored for Supabase Cloud Database Direct Synchronization.
+   LocalStorage for budget and categories removed.
+   ============================================================ */
+
 let totalBudgetInput;
 let categoriesContainer;
 let emptyStateCategories;
@@ -10,7 +16,68 @@ let categoryForm;
 let deleteConfirmModal;
 let currentDeleteId = null;
 
-window.initBudget = function() {
+/**
+ * Inisialisasi Supabase JS Client
+ * @returns {object|null}
+ */
+function getSupabaseClient() {
+  if (window.supabaseClient) {
+    return window.supabaseClient;
+  }
+  const urlMeta = document.querySelector('meta[name="supabase-url"]');
+  const keyMeta = document.querySelector('meta[name="supabase-key"]');
+  const supabaseUrl = (urlMeta ? urlMeta.getAttribute('content') : '') || window.SUPABASE_URL || 'https://dmhifcfsloncgjrxzvnl.supabase.co';
+  const supabaseKey = (keyMeta ? keyMeta.getAttribute('content') : '') || window.SUPABASE_ANON_KEY || 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl';
+
+  if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+    try {
+      window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+      return window.supabaseClient;
+    } catch (e) {
+      console.warn('[Supabase] Gagal membuat client:', e);
+    }
+  }
+  return null;
+}
+
+/**
+ * Dapatkan user yang sedang aktif dari session Supabase Auth
+ * @returns {Promise<object|null>}
+ */
+async function getActiveSupabaseUser() {
+  const client = getSupabaseClient();
+  if (client && client.auth && typeof client.auth.getUser === 'function') {
+    try {
+      const { data: { user }, error } = await client.auth.getUser();
+      if (user && user.id) {
+        return user;
+      }
+    } catch (err) {
+      console.warn('Gagal membaca user dari client.auth.getUser():', err);
+    }
+  }
+
+  // Fallback: Ambil data user dari session helper aplikasi
+  if (typeof window.getActiveUser === 'function') {
+    const active = window.getActiveUser();
+    if (active && active.id) return active;
+  }
+
+  const rawUser = localStorage.getItem('budgetku_user') || sessionStorage.getItem('budgetku_user');
+  if (rawUser) {
+    try {
+      const parsed = JSON.parse(rawUser);
+      if (parsed && parsed.id) return parsed;
+    } catch (e) {}
+  }
+
+  return null;
+}
+
+/**
+ * Inisialisasi Halaman Budget
+ */
+window.initBudget = async function() {
   totalBudgetInput = document.getElementById('total-budget-input');
   categoriesContainer = document.getElementById('categories-container');
   emptyStateCategories = document.getElementById('empty-state-categories');
@@ -23,22 +90,31 @@ window.initBudget = function() {
   deleteConfirmModal = document.getElementById('delete-confirm-modal');
 
   setupEventListeners();
-  renderTotalBudget();
   renderCategories();
   updateAllocationSummary();
+
+  // Muat data total budget langsung dari Supabase saat halaman dimuat
+  await loadBudgetDataFromSupabase();
 };
 
+/**
+ * Setup Event Listener interaksi form & modal
+ */
 function setupEventListeners() {
-  totalBudgetInput.addEventListener('input', (e) => {
-    window.formatInputRupiah(e.target);
-  });
+  if (totalBudgetInput) {
+    totalBudgetInput.addEventListener('input', (e) => {
+      if (window.formatInputRupiah) {
+        window.formatInputRupiah(e.target);
+      }
+    });
 
-  totalBudgetInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSetBudget();
-    }
-  });
+    totalBudgetInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSetBudget();
+      }
+    });
+  }
 
   const btnSetBudget = document.getElementById('btn-set-budget');
   if (btnSetBudget) {
@@ -55,78 +131,255 @@ function setupEventListeners() {
   }
   
   // Modal listeners
-  document.getElementById('btn-cancel-cat-modal').addEventListener('click', closeCategoryModal);
-  document.getElementById('btn-save-cat-modal').addEventListener('click', saveCategoryFromModal);
-  document.getElementById('btn-add-subcat').addEventListener('click', () => addSubcatInputRow());
+  const btnCancelCat = document.getElementById('btn-cancel-cat-modal');
+  if (btnCancelCat) btnCancelCat.addEventListener('click', closeCategoryModal);
 
-  document.getElementById('cat-budget-input').addEventListener('input', (e) => {
-    window.formatInputRupiah(e.target);
-  });
+  const btnSaveCat = document.getElementById('btn-save-cat-modal');
+  if (btnSaveCat) btnSaveCat.addEventListener('click', saveCategoryFromModal);
 
-  // Delete modal
-  document.getElementById('btn-cancel-delete').addEventListener('click', () => {
-    deleteConfirmModal.close();
-    currentDeleteId = null;
-  });
-  document.getElementById('btn-confirm-delete').addEventListener('click', confirmDeleteCategory);
-}
+  const btnAddSubcat = document.getElementById('btn-add-subcat');
+  if (btnAddSubcat) btnAddSubcat.addEventListener('click', () => addSubcatInputRow());
 
-function renderTotalBudget() {
-  const budget = window.getBudget();
-  if (budget && budget.totalBudget > 0) {
-    totalBudgetInput.value = window.formatRupiah(budget.totalBudget).replace('Rp ', '');
-  } else {
-    totalBudgetInput.value = '';
+  const catBudgetInput = document.getElementById('cat-budget-input');
+  if (catBudgetInput) {
+    catBudgetInput.addEventListener('input', (e) => {
+      if (window.formatInputRupiah) {
+        window.formatInputRupiah(e.target);
+      }
+    });
+  }
+
+  // Delete modal listeners
+  const btnCancelDelete = document.getElementById('btn-cancel-delete');
+  if (btnCancelDelete) {
+    btnCancelDelete.addEventListener('click', () => {
+      if (deleteConfirmModal) deleteConfirmModal.close();
+      currentDeleteId = null;
+    });
+  }
+
+  const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+  if (btnConfirmDelete) {
+    btnConfirmDelete.addEventListener('click', confirmDeleteCategory);
   }
 }
 
+/**
+ * 2. Integrasi Read Data (Supabase):
+ * Ambil session user aktif, query SELECT ke tabel 'budgets' berdasarkan user_id dan month,
+ * lalu tampilkan total_budget ke dalam input form.
+ */
+async function loadBudgetDataFromSupabase() {
+  const client = getSupabaseClient();
+  if (!client) {
+    console.warn('[Supabase] Client tidak tersedia untuk membaca data.');
+    renderTotalBudgetFromMemory();
+    return;
+  }
+
+  try {
+    const user = await getActiveSupabaseUser();
+    if (!user || !user.id) {
+      console.warn('[Supabase] Sesi pengguna aktif tidak ditemukan.');
+      renderTotalBudgetFromMemory();
+      return;
+    }
+
+    const currentMonth = typeof window.getCurrentMonth === 'function'
+      ? window.getCurrentMonth()
+      : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
+
+    // Query SELECT ke tabel budgets berdasarkan user_id dan month
+    const { data, error } = await client
+      .from('budgets')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('month', currentMonth)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[Supabase] Gagal membaca data budget:', error);
+      if (typeof window.showAppModal === 'function') {
+        window.showAppModal({
+          title: 'Gagal Memuat Data Supabase',
+          message: `Terjadi kendala saat membaca data dari tabel budgets: ${error.message}`,
+          type: 'danger'
+        });
+      }
+      return;
+    }
+
+    if (data && data.total_budget != null) {
+      const amount = Number(data.total_budget);
+      if (totalBudgetInput) {
+        totalBudgetInput.value = window.formatRupiah ? window.formatRupiah(amount).replace('Rp ', '') : String(amount);
+      }
+      if (typeof window.getBudget === 'function') {
+        const inMemory = window.getBudget();
+        inMemory.totalBudget = amount;
+        inMemory.month = currentMonth;
+        inMemory.user_id = user.id;
+      }
+    } else {
+      if (totalBudgetInput) totalBudgetInput.value = '';
+    }
+
+    updateAllocationSummary();
+  } catch (err) {
+    console.error('[Supabase] Error saat menjalankan query select budget:', err);
+  }
+}
+
+/**
+ * Fallback render dari memory jika Supabase query belum selesai
+ */
+function renderTotalBudgetFromMemory() {
+  if (typeof window.getBudget === 'function') {
+    const budget = window.getBudget();
+    if (budget && budget.totalBudget > 0 && totalBudgetInput) {
+      totalBudgetInput.value = window.formatRupiah(budget.totalBudget).replace('Rp ', '');
+    } else if (totalBudgetInput) {
+      totalBudgetInput.value = '';
+    }
+  }
+}
+
+/**
+ * 3. Integrasi Write/Save Data (Supabase) & 4. Error Handling:
+ * Saat tombol "Set" ditekan, jalankan fungsi upsert ke tabel 'budgets'
+ * Payload: { user_id, month, total_budget }
+ * Berikan alert sukses atau alert error dengan pesan asli dari Supabase.
+ */
 async function handleSetBudget() {
   const btn = document.getElementById('btn-set-budget');
-  const amountStr = totalBudgetInput.value;
-  const amount = window.parseRupiah(amountStr);
+  const amountStr = totalBudgetInput ? totalBudgetInput.value : '';
+  const totalBudget = window.parseRupiah 
+    ? window.parseRupiah(amountStr) 
+    : parseInt(amountStr.replace(/[^0-9]/g, ''), 10) || 0;
 
+  const client = getSupabaseClient();
+  if (!client) {
+    const errorMsg = 'Koneksi Supabase JS Client belum terpasang atau tidak tersedia.';
+    if (typeof window.showAppModal === 'function') {
+      window.showAppModal({
+        title: 'Koneksi Tidak Tersedia',
+        message: errorMsg,
+        type: 'danger'
+      });
+    } else {
+      alert(errorMsg);
+    }
+    return;
+  }
+
+  // Tampilkan indikator loading pada tombol
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
   }
 
-  await window.updateTotalBudget(amount);
-  updateAllocationSummary();
+  try {
+    const user = await getActiveSupabaseUser();
+    if (!user || !user.id) {
+      throw new Error('Sesi pengguna tidak valid. Silakan masuk kembali ke akun Anda.');
+    }
 
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i> Tersimpan!';
-    setTimeout(() => {
-      btn.innerHTML = '<i class="bi bi-check-lg"></i> Set';
-    }, 2000);
-  }
+    const currentMonth = typeof window.getCurrentMonth === 'function'
+      ? window.getCurrentMonth()
+      : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
 
-  const feedback = document.getElementById('budget-saved-feedback');
-  if (feedback) {
-    feedback.classList.remove('d-none');
-    setTimeout(() => {
-      feedback.classList.add('d-none');
-    }, 3500);
+    // Siapkan payload sesuai spesifikasi
+    const payload = {
+      user_id: user.id,
+      month: currentMonth,
+      total_budget: totalBudget
+    };
+
+    // Jalankan operasi upsert (Update or Insert) ke tabel budgets
+    const { data, error } = await client
+      .from('budgets')
+      .upsert(payload, { onConflict: 'user_id,month' })
+      .select();
+
+    if (error) {
+      throw error;
+    }
+
+    // Update in-memory cache dan sinkronisasi
+    if (typeof window.getBudget === 'function') {
+      const b = window.getBudget();
+      b.totalBudget = totalBudget;
+      b.month = currentMonth;
+      b.user_id = user.id;
+    }
+    if (typeof window.updateTotalBudget === 'function') {
+      window.updateTotalBudget(totalBudget);
+    }
+
+    updateAllocationSummary();
+
+    // 4. Alert Sukses
+    if (typeof window.showAppModal === 'function') {
+      window.showAppModal({
+        title: 'Berhasil Disimpan',
+        message: `Total uang bulanan sebesar <strong>${window.formatRupiah ? window.formatRupiah(totalBudget) : 'Rp ' + totalBudget}</strong> berhasil disimpan ke database Supabase.`,
+        type: 'success'
+      });
+    } else {
+      alert('Total budget bulanan berhasil disimpan ke Supabase!');
+    }
+
+    const feedback = document.getElementById('budget-saved-feedback');
+    if (feedback) {
+      feedback.classList.remove('d-none');
+      setTimeout(() => {
+        feedback.classList.add('d-none');
+      }, 3500);
+    }
+
+    if (btn) {
+      btn.innerHTML = '<i class="bi bi-check-lg"></i> Tersimpan!';
+      setTimeout(() => {
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Set';
+      }, 2000);
+    }
+  } catch (err) {
+    // 4. Error Handling: Tampilkan pesan asli dari Supabase (misal RLS issue)
+    console.error('[Supabase] Gagal melakukan upsert budget:', err);
+    const errorMessage = err.message || err.error_description || 'Terjadi kegagalan saat menyimpan ke database Supabase.';
+    
+    if (typeof window.showAppModal === 'function') {
+      window.showAppModal({
+        title: 'Gagal Menyimpan ke Supabase',
+        message: `Terjadi kesalahan dari Supabase:<br><br><div class="p-2 bg-danger-subtle text-danger rounded small font-monospace">${errorMessage}</div>`,
+        type: 'danger'
+      });
+    } else {
+      alert(`Gagal menyimpan ke Supabase: ${errorMessage}`);
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+    }
   }
 }
 
-const debounceUpdateCategoryBudget = window.debounce((catId, inputEl) => {
-  const amount = window.parseRupiah(inputEl.value);
-  window.updateCategory(catId, { budget: amount });
-  updateAllocationSummary();
-}, 500);
-
+/**
+ * Render Daftar Kategori dari In-Memory Data Store (Database Synced)
+ */
 function renderCategories() {
-  const categories = window.getCategories();
+  const categories = typeof window.getCategories === 'function' ? window.getCategories() : [];
   
+  if (!categoriesContainer) return;
+
   if (categories.length === 0) {
-    emptyStateCategories.classList.remove('d-none');
+    if (emptyStateCategories) emptyStateCategories.classList.remove('d-none');
     if (btnAddCategoryTop) btnAddCategoryTop.classList.add('d-none');
     categoriesContainer.innerHTML = '';
     return;
   }
   
-  emptyStateCategories.classList.add('d-none');
+  if (emptyStateCategories) emptyStateCategories.classList.add('d-none');
   if (btnAddCategoryTop) btnAddCategoryTop.classList.remove('d-none');
   categoriesContainer.innerHTML = '';
 
@@ -134,7 +387,7 @@ function renderCategories() {
     const hasSubcats = cat.subcategories && cat.subcategories.length > 0;
     
     const row = document.createElement('div');
-    row.className = 'category-item-card p-3 mb-3 bg-white';
+    row.className = 'category-item-card p-3 mb-3 bg-white shadow-sm rounded-3 border';
     
     const catHeader = document.createElement('div');
     catHeader.className = 'd-flex align-items-center justify-content-between flex-wrap flex-md-nowrap gap-3';
@@ -169,8 +422,8 @@ function renderCategories() {
     } else {
       const iconBox = document.createElement('div');
       iconBox.className = isSavings
-        ? 'category-icon-box bg-success-subtle text-success rounded-circle'
-        : 'category-icon-box bg-primary-subtle text-primary rounded-circle';
+        ? 'category-icon-box bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center'
+        : 'category-icon-box bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center';
       iconBox.style.width = '36px';
       iconBox.style.height = '36px';
       iconBox.innerHTML = isSavings ? '<i class="bi bi-piggy-bank-fill small"></i>' : '<i class="bi bi-tag-fill small"></i>';
@@ -205,8 +458,8 @@ function renderCategories() {
     rightCol.className = 'd-flex align-items-center gap-3 ms-auto flex-shrink-0';
     
     const amountBadge = document.createElement('div');
-    amountBadge.className = 'category-amount-badge fw-bold text-dark font-monospace px-3 py-1 rounded-2';
-    amountBadge.textContent = window.formatRupiah(cat.budget);
+    amountBadge.className = 'category-amount-badge fw-bold text-dark font-monospace px-3 py-1 rounded-2 bg-light border';
+    amountBadge.textContent = window.formatRupiah ? window.formatRupiah(cat.budget) : 'Rp ' + cat.budget;
     rightCol.appendChild(amountBadge);
     
     const btnGroup = document.createElement('div');
@@ -251,7 +504,7 @@ function renderCategories() {
       
       cat.subcategories.forEach(sub => {
         const subItem = document.createElement('div');
-        subItem.className = 'subcat-item d-flex align-items-center justify-content-between';
+        subItem.className = 'subcat-item d-flex align-items-center justify-content-between p-2 rounded bg-light bg-opacity-50';
         
         const subName = document.createElement('span');
         subName.className = 'text-secondary fw-medium small';
@@ -259,7 +512,7 @@ function renderCategories() {
         
         const subVal = document.createElement('span');
         subVal.className = 'fw-semibold text-dark small font-monospace';
-        subVal.textContent = window.formatRupiah(sub.budget);
+        subVal.textContent = window.formatRupiah ? window.formatRupiah(sub.budget) : 'Rp ' + sub.budget;
         
         subItem.appendChild(subName);
         subItem.appendChild(subVal);
@@ -275,8 +528,13 @@ function renderCategories() {
   });
 }
 
+/**
+ * Update Ringkasan Alokasi Budget di Footer
+ */
 function updateAllocationSummary() {
-  const budgetData = window.getBudget();
+  if (!allocatedText || !allocationProgress || !allocationBadge) return;
+
+  const budgetData = typeof window.getBudget === 'function' ? window.getBudget() : { totalBudget: 0, categories: [] };
   const baselineBudget = budgetData.totalBudget || 0;
   const totalIncome = typeof window.getTotalIncome === 'function' ? window.getTotalIncome() : 0;
   const totalCapacity = baselineBudget + totalIncome;
@@ -329,7 +587,6 @@ function updateCategoryBudgetFromSubcats() {
   if (!catBudgetInput) return;
 
   if (subcatRows.length > 0) {
-    // Ada 1 atau lebih sub-kategori: Kunci input menjadi readonly & auto-sum
     catBudgetInput.readOnly = true;
     catBudgetInput.classList.add('bg-light');
     if (catBudgetHelper) {
@@ -346,7 +603,6 @@ function updateCategoryBudgetFromSubcats() {
 
     catBudgetInput.value = window.formatRupiah(total).replace('Rp ', '');
   } else {
-    // Tidak ada sub-kategori: Buka kunci manual
     catBudgetInput.readOnly = false;
     catBudgetInput.classList.remove('bg-light');
     if (catBudgetHelper) {
@@ -368,11 +624,11 @@ function openAddCategoryModal() {
   document.getElementById('cat-budget-input').classList.remove('is-invalid');
   
   updateCategoryBudgetFromSubcats();
-  categoryModal.showModal();
+  if (categoryModal) categoryModal.showModal();
 }
 
 function openEditCategoryModal(catId) {
-  const cat = window.getCategoryById(catId);
+  const cat = typeof window.getCategoryById === 'function' ? window.getCategoryById(catId) : null;
   if (!cat) return;
   
   document.getElementById('category-modal-title').textContent = 'Edit Kategori';
@@ -398,15 +654,17 @@ function openEditCategoryModal(catId) {
   document.getElementById('cat-budget-input').classList.remove('is-invalid');
   
   updateCategoryBudgetFromSubcats();
-  categoryModal.showModal();
+  if (categoryModal) categoryModal.showModal();
 }
 
 function closeCategoryModal() {
-  categoryModal.close();
+  if (categoryModal) categoryModal.close();
 }
 
 function addSubcatInputRow(name = '', budget = 0, id = null) {
   const container = document.getElementById('subcat-list-container');
+  if (!container) return;
+
   const row = document.createElement('div');
   row.className = 'd-flex gap-2 mb-2 subcat-input-row';
   if (id) {
@@ -501,7 +759,6 @@ async function saveCategoryFromModal() {
 
   const isSavings = isSavingsInput ? isSavingsInput.checked : false;
 
-  // Tampilkan animasi loading & disable tombol agar tidak diklik ganda
   if (saveBtn) {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
@@ -527,6 +784,13 @@ async function saveCategoryFromModal() {
     updateAllocationSummary();
   } catch (err) {
     console.error('Error saat menyimpan kategori:', err);
+    if (typeof window.showAppModal === 'function') {
+      window.showAppModal({
+        title: 'Gagal Menyimpan Kategori',
+        message: err.message || 'Terjadi kesalahan saat menyimpan kategori.',
+        type: 'danger'
+      });
+    }
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
@@ -539,7 +803,7 @@ async function saveCategoryFromModal() {
 function confirmDeleteRequest(catId, catName) {
   currentDeleteId = catId;
   document.getElementById('delete-confirm-text').textContent = `Apakah Anda yakin ingin menghapus kategori "${catName}"?`;
-  deleteConfirmModal.showModal();
+  if (deleteConfirmModal) deleteConfirmModal.showModal();
 }
 
 async function confirmDeleteCategory() {
@@ -566,7 +830,7 @@ async function confirmDeleteCategory() {
       confirmBtn.innerHTML = 'Hapus';
     }
     if (cancelBtn) cancelBtn.disabled = false;
-    deleteConfirmModal.close();
+    if (deleteConfirmModal) deleteConfirmModal.close();
     currentDeleteId = null;
   }
 }

@@ -224,6 +224,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   
   <!-- App Scripts -->
+  <script src="{{ asset('js/supabase.js') }}"></script>
   <script src="{{ asset('js/modal-alert.js') }}"></script>
   <script src="{{ asset('js/format.js') }}"></script>
   <script src="{{ asset('js/storage.js') }}"></script>

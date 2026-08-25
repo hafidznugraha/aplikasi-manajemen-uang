@@ -70,45 +70,18 @@ async function initStorage() {
   _currentTransactions = [];
   _archiveList = [];
 
-  // 1. Instant boot dari Local Hot-Cache jika ada untuk user ini (0ms latency)
-  try {
-    const cached = localStorage.getItem(getCacheKey());
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed.budget && parsed.budget.month === month && (!parsed.budget.user_id || parsed.budget.user_id === userId)) {
-        _currentBudget = parsed.budget;
-        _currentBudget.user_id = userId;
-        _currentBudget.userId = userId;
-      }
-      if (Array.isArray(parsed.transactions)) {
-        _currentTransactions = parsed.transactions.filter(t => !t.user_id || t.user_id === userId);
-      }
-      if (Array.isArray(parsed.archives)) {
-        _archiveList = parsed.archives.filter(a => !a.user_id || a.user_id === userId);
-      }
-    }
-  } catch (e) {}
-
-  // 2. Setup Supabase Realtime WebSocket Subscriptions
+  // 1. Setup Supabase Realtime WebSocket Subscriptions
   initSupabaseRealtime();
 
-  // 3. Background sync kilat (non-blocking)
-  syncFromSupabase(month);
+  // 2. Background sync kilat langsung dari database Supabase (non-blocking)
+  await syncFromSupabase(month);
 }
 
 /**
- * Simpan hot-cache ke localStorage terisolasi per user
+ * Persistensi data kini ditangani secara langsung oleh Supabase Cloud Database
  */
 function persistHotCache() {
-  try {
-    const userId = getActiveUserId();
-    localStorage.setItem(getCacheKey(), JSON.stringify({
-      user_id: userId,
-      budget: _currentBudget,
-      transactions: _currentTransactions.filter(t => !t.user_id || t.user_id === userId),
-      archives: _archiveList.filter(a => !a.user_id || a.user_id === userId),
-    }));
-  } catch (e) {}
+  // LocalStorage untuk budget dan kategori dinonaktifkan agar tersinkronisasi murni via Supabase
 }
 
 /**
