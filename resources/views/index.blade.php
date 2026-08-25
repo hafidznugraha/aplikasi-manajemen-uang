@@ -136,6 +136,9 @@
               <div>
                 <h6 class="text-white text-opacity-75 mb-1 fw-medium small" id="remaining-card-label">Sisa Budget</h6>
                 <h4 class="mb-0 text-white fw-bold" id="total-remaining">Rp 0</h4>
+                <small class="text-white text-opacity-75 fw-medium d-block mt-1" id="remaining-breakdown-note">
+                  Digital: <span id="sisa-digital" class="fw-semibold">Rp 0</span> | Fisik: <span id="sisa-fisik" class="fw-semibold">Rp 0</span>
+                </small>
               </div>
               <div class="icon-box bg-white bg-opacity-20 text-white p-3 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ms-2" style="width: 52px; height: 52px;">
                 <i class="bi bi-wallet2 fs-4" id="remaining-card-icon"></i>

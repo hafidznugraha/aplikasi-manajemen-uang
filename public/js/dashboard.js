@@ -103,12 +103,51 @@ async function initDashboard() {
 window.initDashboard = initDashboard;
 
 function renderSummaryCards(budget) {
-  const baselineBudget = budget.totalBudget || 0;
-  const totalIncome = typeof window.getTotalIncome === 'function' ? window.getTotalIncome() : 0;
-  const totalSpent = typeof window.getTotalSpent === 'function' ? window.getTotalSpent() : 0;
+  const initialBank = budget.total_budget != null ? Number(budget.total_budget) : (Number(budget.totalBudget) || 0);
+  const initialCash = budget.total_cash != null ? Number(budget.total_cash) : (Number(budget.totalCash) || 0);
+  const baselineBudget = initialBank + initialCash;
+
+  // Iterasi transaksi untuk menghitung pemasukan dan pengeluaran per sumber dana
+  const transactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
+  
+  let bankIncome = 0;
+  let cashIncome = 0;
+  let bankSpent = 0;
+  let cashSpent = 0;
+
+  transactions.forEach(txn => {
+    const type = txn.type || 'expense';
+    const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    const amount = Number(txn.amount) || 0;
+
+    if (type === 'income') {
+      if (fundSource === 'cash') {
+        cashIncome += amount;
+      } else {
+        bankIncome += amount;
+      }
+    } else if (type === 'expense') {
+      const isSystem = !!(txn.is_system || txn.isSystem);
+      if (!isSystem) {
+        if (fundSource === 'cash') {
+          cashSpent += amount;
+        } else {
+          bankSpent += amount;
+        }
+      }
+    }
+  });
+
+  const totalIncome = bankIncome + cashIncome;
+  const totalSpent = bankSpent + cashSpent;
   const effectiveBudget = baselineBudget + totalIncome;
   const remaining = effectiveBudget - totalSpent;
 
+  // Sisa per sumber dana
+  const sisaDigital = (initialBank + bankIncome) - bankSpent;
+  const sisaFisik = (initialCash + cashIncome) - cashSpent;
+
+  // Render Card 1: Total Budget
   const totalBudgetEl = document.getElementById('total-budget');
   if (totalBudgetEl) totalBudgetEl.textContent = window.formatRupiah(baselineBudget);
   
@@ -122,11 +161,19 @@ function renderSummaryCards(budget) {
     }
   }
 
+  // Render Card 2: Total Pengeluaran
   const totalSpentEl = document.getElementById('total-spent');
   if (totalSpentEl) totalSpentEl.textContent = window.formatRupiah(totalSpent);
   
+  // Render Card 3: Sisa Budget & Rincian Digital/Fisik
   const remainingEl = document.getElementById('total-remaining');
   if (remainingEl) remainingEl.textContent = window.formatRupiah(remaining);
+
+  const sisaDigitalEl = document.getElementById('sisa-digital');
+  if (sisaDigitalEl) sisaDigitalEl.textContent = window.formatRupiah(sisaDigital);
+
+  const sisaFisikEl = document.getElementById('sisa-fisik');
+  if (sisaFisikEl) sisaFisikEl.textContent = window.formatRupiah(sisaFisik);
   
   const remainingCard = document.getElementById('remaining-card');
   if (remainingCard) {
