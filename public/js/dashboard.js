@@ -116,10 +116,15 @@ function renderSummaryCards(budget) {
   let cashIncome = 0;
   let bankSpent = 0;
   let cashSpent = 0;
+  let bankTransferOut = 0;
+  let bankTransferIn = 0;
+  let cashTransferOut = 0;
+  let cashTransferIn = 0;
 
   transactions.forEach(txn => {
     const type = txn.type || 'expense';
     const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    const fundDestination = (txn.fund_destination || txn.fundDestination || '').toLowerCase();
     const amount = Number(txn.amount) || 0;
 
     if (type === 'income') {
@@ -137,6 +142,14 @@ function renderSummaryCards(budget) {
           bankSpent += amount;
         }
       }
+    } else if (type === 'transfer') {
+      if (fundSource === 'bank' || fundDestination === 'cash') {
+        bankTransferOut += amount;
+        cashTransferIn += amount;
+      } else if (fundSource === 'cash' || fundDestination === 'bank') {
+        cashTransferOut += amount;
+        bankTransferIn += amount;
+      }
     }
   });
 
@@ -146,8 +159,8 @@ function renderSummaryCards(budget) {
   const remaining = effectiveBudget - totalSpent;
 
   // Sisa per sumber dana
-  const sisaDigital = (initialBank + bankIncome) - bankSpent;
-  const sisaFisik = (initialCash + cashIncome) - cashSpent;
+  const sisaDigital = (initialBank + bankIncome + bankTransferIn) - (bankSpent + bankTransferOut);
+  const sisaFisik = (initialCash + cashIncome + cashTransferIn) - (cashSpent + cashTransferOut);
 
   // Render Card 1: Total Budget
   const totalBudgetEl = document.getElementById('total-budget');
@@ -630,6 +643,7 @@ function renderRecentTransactions(budget) {
   pageItems.forEach(txn => {
     const isIncome = txn.type === 'income';
     const isReallocation = txn.type === 'reallocation';
+    const isTransfer = txn.type === 'transfer';
     let badgeHtml = '';
     let amountHtml = '';
 
@@ -638,6 +652,9 @@ function renderRecentTransactions(budget) {
       amountHtml = `<span class="text-success fw-bold font-monospace">+${window.formatRupiah(txn.amount)}</span>`;
     } else if (isReallocation) {
       badgeHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"><i class="bi bi-arrow-left-right me-1"></i>Realokasi</span>`;
+      amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${window.formatRupiah(txn.amount)}</span>`;
+    } else if (isTransfer) {
+      badgeHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"><i class="bi bi-arrow-left-right me-1"></i>Mutasi</span>`;
       amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${window.formatRupiah(txn.amount)}</span>`;
     } else {
       const category = typeof window.getCategoryById === 'function' ? window.getCategoryById(txn.categoryId) : null;

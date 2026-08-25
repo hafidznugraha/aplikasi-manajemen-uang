@@ -271,7 +271,7 @@ function renderProgressBars(archive) {
   
   if (archive.transactions) {
     archive.transactions.forEach(t => {
-      if (t.type === 'income' || t.type === 'reallocation') return;
+      if (t.type === 'income' || t.type === 'reallocation' || t.type === 'transfer') return;
       if (spentByCategory[t.categoryId] !== undefined) {
         spentByCategory[t.categoryId] += t.amount;
       }
@@ -320,6 +320,7 @@ function renderTransactionsTable(archive) {
   sortedTxns.forEach(txn => {
     const isIncome = txn.type === 'income';
     const isReallocation = txn.type === 'reallocation';
+    const isTransfer = txn.type === 'transfer';
     let catHtml = '';
     let amountHtml = '';
 
@@ -328,6 +329,9 @@ function renderTransactionsTable(archive) {
       amountHtml = `<span class="text-success fw-bold font-monospace">+${window.formatRupiah(txn.amount)}</span>`;
     } else if (isReallocation) {
       catHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"><i class="bi bi-arrow-left-right me-1"></i>Realokasi</span>`;
+      amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${window.formatRupiah(txn.amount)}</span>`;
+    } else if (isTransfer) {
+      catHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"><i class="bi bi-arrow-left-right me-1"></i>Mutasi</span>`;
       amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${window.formatRupiah(txn.amount)}</span>`;
     } else {
       let catName = 'Uncategorized';

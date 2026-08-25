@@ -18,6 +18,7 @@ class Transaction extends Model
         'budget_id',
         'type',
         'fund_source',
+        'fund_destination',
         'is_system',
         'category_id',
         'subcategory_id',

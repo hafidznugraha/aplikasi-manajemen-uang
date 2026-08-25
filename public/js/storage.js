@@ -492,10 +492,14 @@ async function addTransaction(txn, file = null) {
   txn.userId = userId;
 
   const fundSource = txn.fund_source || txn.fundSource || 'bank';
+  const fundDestination = txn.fund_destination || txn.fundDestination || null;
 
   const formData = new FormData();
   formData.append('type', txn.type || 'expense');
   formData.append('fund_source', fundSource);
+  if (fundDestination) {
+    formData.append('fund_destination', fundDestination);
+  }
   formData.append('user_id', userId);
   if (txn.is_system !== undefined) {
     formData.append('is_system', txn.is_system ? '1' : '0');
@@ -530,6 +534,8 @@ async function addTransaction(txn, file = null) {
       newTxn.userId = userId;
       newTxn.fund_source = newTxn.fund_source || fundSource;
       newTxn.fundSource = newTxn.fundSource || fundSource;
+      newTxn.fund_destination = newTxn.fund_destination || fundDestination;
+      newTxn.fundDestination = newTxn.fundDestination || fundDestination;
       _currentTransactions.unshift(newTxn);
       persistHotCache();
       return newTxn;
@@ -550,6 +556,9 @@ async function updateTransaction(txnId, updates, file = null) {
   if (updates.type) formData.append('type', updates.type);
   if (updates.fund_source || updates.fundSource) {
     formData.append('fund_source', updates.fund_source || updates.fundSource);
+  }
+  if (updates.fund_destination || updates.fundDestination) {
+    formData.append('fund_destination', updates.fund_destination || updates.fundDestination);
   }
   if (updates.date) formData.append('date', updates.date);
   if (updates.categoryId !== undefined) formData.append('category_id', updates.categoryId || '');
@@ -643,7 +652,7 @@ function getSpentByCategory() {
   const transactions = getTransactions();
   const result = {};
   transactions.forEach((txn) => {
-    if (txn.type === 'income' || txn.type === 'reallocation') return; // Hanya hitung pengeluaran riil untuk alokasi kategori
+    if (txn.type === 'income' || txn.type === 'reallocation' || txn.type === 'transfer') return; // Mutasi saldo & pemasukan bukan pengeluaran kategori
     if (txn.categoryId) {
       if (!result[txn.categoryId]) result[txn.categoryId] = 0;
       result[txn.categoryId] += txn.amount;
@@ -655,7 +664,7 @@ function getSpentByCategory() {
 function getTotalSpent() {
   const transactions = getTransactions();
   return transactions
-    .filter(t => t.type !== 'income' && t.type !== 'reallocation')
+    .filter(t => t.type !== 'income' && t.type !== 'reallocation' && t.type !== 'transfer')
     .reduce((sum, txn) => sum + txn.amount, 0);
 }
 
@@ -670,7 +679,7 @@ function getSpentByFundSource() {
   const transactions = getTransactions();
   const result = { bank: 0, cash: 0 };
   transactions.forEach((txn) => {
-    if (txn.type === 'income' || txn.type === 'reallocation') return;
+    if (txn.type === 'income' || txn.type === 'reallocation' || txn.type === 'transfer') return;
     const source = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
     if (source === 'cash') {
       result.cash += txn.amount;
@@ -698,24 +707,67 @@ function getIncomeByFundSource() {
 
 function getFundSourceBalances() {
   const budget = getBudget();
-  const initialBank = budget.total_budget != null ? budget.total_budget : (budget.totalBudget || 0);
-  const initialCash = budget.total_cash != null ? budget.total_cash : (budget.totalCash || 0);
+  const initialBank = budget.total_budget != null ? Number(budget.total_budget) : (Number(budget.totalBudget) || 0);
+  const initialCash = budget.total_cash != null ? Number(budget.total_cash) : (Number(budget.totalCash) || 0);
 
-  const spent = getSpentByFundSource();
-  const income = getIncomeByFundSource();
+  const transactions = getTransactions();
+  let bankIncome = 0;
+  let cashIncome = 0;
+  let bankSpent = 0;
+  let cashSpent = 0;
+  let bankTransferOut = 0;
+  let bankTransferIn = 0;
+  let cashTransferOut = 0;
+  let cashTransferIn = 0;
+
+  transactions.forEach(txn => {
+    const type = txn.type || 'expense';
+    const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    const fundDestination = (txn.fund_destination || txn.fundDestination || '').toLowerCase();
+    const amount = Number(txn.amount) || 0;
+
+    if (type === 'income') {
+      if (fundSource === 'cash') {
+        cashIncome += amount;
+      } else {
+        bankIncome += amount;
+      }
+    } else if (type === 'expense') {
+      const isSystem = !!(txn.is_system || txn.isSystem);
+      if (!isSystem) {
+        if (fundSource === 'cash') {
+          cashSpent += amount;
+        } else {
+          bankSpent += amount;
+        }
+      }
+    } else if (type === 'transfer') {
+      if (fundSource === 'bank' || fundDestination === 'cash') {
+        bankTransferOut += amount;
+        cashTransferIn += amount;
+      } else if (fundSource === 'cash' || fundDestination === 'bank') {
+        cashTransferOut += amount;
+        bankTransferIn += amount;
+      }
+    }
+  });
 
   return {
     bank: {
       initial: initialBank,
-      spent: spent.bank,
-      income: income.bank,
-      remaining: (initialBank + income.bank) - spent.bank,
+      spent: bankSpent,
+      income: bankIncome,
+      transferIn: bankTransferIn,
+      transferOut: bankTransferOut,
+      remaining: (initialBank + bankIncome + bankTransferIn) - (bankSpent + bankTransferOut),
     },
     cash: {
       initial: initialCash,
-      spent: spent.cash,
-      income: income.cash,
-      remaining: (initialCash + income.cash) - spent.cash,
+      spent: cashSpent,
+      income: cashIncome,
+      transferIn: cashTransferIn,
+      transferOut: cashTransferOut,
+      remaining: (initialCash + cashIncome + cashTransferIn) - (cashSpent + cashTransferOut),
     }
   };
 }

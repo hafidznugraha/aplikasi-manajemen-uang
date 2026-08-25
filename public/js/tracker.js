@@ -149,10 +149,15 @@ function calculateFundSourceBalances() {
   let cashIncome = 0;
   let bankSpent = 0;
   let cashSpent = 0;
+  let bankTransferOut = 0;
+  let bankTransferIn = 0;
+  let cashTransferOut = 0;
+  let cashTransferIn = 0;
 
   transactions.forEach(txn => {
     const type = txn.type || 'expense';
     const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    const fundDestination = (txn.fund_destination || txn.fundDestination || '').toLowerCase();
     const amount = Number(txn.amount) || 0;
 
     if (type === 'income') {
@@ -170,11 +175,19 @@ function calculateFundSourceBalances() {
           bankSpent += amount;
         }
       }
+    } else if (type === 'transfer') {
+      if (fundSource === 'bank' || fundDestination === 'cash') {
+        bankTransferOut += amount;
+        cashTransferIn += amount;
+      } else if (fundSource === 'cash' || fundDestination === 'bank') {
+        cashTransferOut += amount;
+        bankTransferIn += amount;
+      }
     }
   });
 
-  const sisaBank = (initialBank + bankIncome) - bankSpent;
-  const sisaCash = (initialCash + cashIncome) - cashSpent;
+  const sisaBank = (initialBank + bankIncome + bankTransferIn) - (bankSpent + bankTransferOut);
+  const sisaCash = (initialCash + cashIncome + cashTransferIn) - (cashSpent + cashTransferOut);
 
   return { sisaBank, sisaCash };
 }
@@ -206,6 +219,30 @@ function updateFundSourceSelects() {
 
 window.calculateFundSourceBalances = calculateFundSourceBalances;
 window.updateFundSourceSelects = updateFundSourceSelects;
+
+let currentTxnType = 'expense';
+
+function switchTxnType(type) {
+  currentTxnType = type;
+  const hiddenInput = document.getElementById('selected-txn-type');
+  if (hiddenInput) hiddenInput.value = type;
+
+  const tabs = ['expense', 'income', 'transfer'];
+  tabs.forEach(t => {
+    const tabEl = document.getElementById(`tab-${t}`);
+    if (tabEl) {
+      if (t === type) {
+        tabEl.classList.add('active');
+      } else {
+        tabEl.classList.remove('active');
+      }
+    }
+  });
+
+  handleTypeChange();
+}
+
+window.switchTxnType = switchTxnType;
 
 function populateCategorySelects() {
   const categories = getCategories();
@@ -265,7 +302,7 @@ function populateCategorySelects() {
 }
 
 function handleTypeChange() {
-  const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
+  const selectedType = document.getElementById('selected-txn-type') ? document.getElementById('selected-txn-type').value : (currentTxnType || 'expense');
   const catRow = document.getElementById('category-row');
   const catCol = document.getElementById('category-col');
   const subcatCol = document.getElementById('subcategory-col');
@@ -273,11 +310,15 @@ function handleTypeChange() {
   const descLabel = document.getElementById('txn-desc-label');
   const descInput = document.getElementById('txn-desc');
   const savingsContainer = document.getElementById('savings-confirmation-container');
+  const fundSourceCol = document.getElementById('fund-source-col');
+  const transferTypeCol = document.getElementById('transfer-type-col');
 
-  if (isIncome) {
+  if (selectedType === 'income') {
     if (catRow) catRow.classList.add('d-none');
     if (catCol) catCol.classList.add('d-none');
     if (subcatCol) subcatCol.classList.add('d-none');
+    if (fundSourceCol) fundSourceCol.classList.remove('d-none');
+    if (transferTypeCol) transferTypeCol.classList.add('d-none');
     if (tomSelectFormCategory) tomSelectFormCategory.setValue('', true);
     if (tomSelectFormSubcategory) tomSelectFormSubcategory.setValue('', true);
     if (catSelect) {
@@ -287,10 +328,28 @@ function handleTypeChange() {
     if (descLabel) descLabel.textContent = 'Sumber Pemasukan / Keterangan';
     if (descInput) descInput.placeholder = 'Contoh: Gaji bulanan, Bonus proyek, Freelance';
     if (savingsContainer) savingsContainer.classList.add('d-none');
+  } else if (selectedType === 'transfer') {
+    if (catRow) catRow.classList.add('d-none');
+    if (catCol) catCol.classList.add('d-none');
+    if (subcatCol) subcatCol.classList.add('d-none');
+    if (fundSourceCol) fundSourceCol.classList.add('d-none');
+    if (transferTypeCol) transferTypeCol.classList.remove('d-none');
+    if (tomSelectFormCategory) tomSelectFormCategory.setValue('', true);
+    if (tomSelectFormSubcategory) tomSelectFormSubcategory.setValue('', true);
+    if (catSelect) {
+      catSelect.required = false;
+      catSelect.value = '';
+    }
+    if (descLabel) descLabel.textContent = 'Keterangan';
+    if (descInput) descInput.placeholder = 'Contoh: Tarik tunai ATM, Setor tunai Bank';
+    if (savingsContainer) savingsContainer.classList.add('d-none');
   } else {
+    // Expense
     if (catRow) catRow.classList.remove('d-none');
     if (catCol) catCol.classList.remove('d-none');
     if (subcatCol) subcatCol.classList.remove('d-none');
+    if (fundSourceCol) fundSourceCol.classList.remove('d-none');
+    if (transferTypeCol) transferTypeCol.classList.add('d-none');
     if (catSelect) catSelect.required = true;
     if (descLabel) descLabel.textContent = 'Keterangan';
     if (descInput) descInput.placeholder = 'Contoh: Makan siang, Bensin, Belanja';
@@ -300,16 +359,34 @@ function handleTypeChange() {
 
 function handleEditTypeChange() {
   const isIncome = document.getElementById('edit-type-income') ? document.getElementById('edit-type-income').checked : false;
+  const isTransfer = document.getElementById('edit-type-transfer') ? document.getElementById('edit-type-transfer').checked : false;
   const catRow = document.getElementById('edit-category-row');
   const catCol = document.getElementById('edit-category-col');
   const subcatCol = document.getElementById('edit-subcategory-col');
   const catSelect = document.getElementById('edit-txn-category');
   const savingsContainer = document.getElementById('edit-savings-confirmation-container');
+  const fundSourceCol = document.getElementById('edit-fund-source-col');
+  const transferTypeCol = document.getElementById('edit-transfer-type-col');
 
   if (isIncome) {
     if (catRow) catRow.classList.add('d-none');
     if (catCol) catCol.classList.add('d-none');
     if (subcatCol) subcatCol.classList.add('d-none');
+    if (fundSourceCol) fundSourceCol.classList.remove('d-none');
+    if (transferTypeCol) transferTypeCol.classList.add('d-none');
+    if (tomSelectEditCategory) tomSelectEditCategory.setValue('', true);
+    if (tomSelectEditSubcategory) tomSelectEditSubcategory.setValue('', true);
+    if (catSelect) {
+      catSelect.required = false;
+      catSelect.value = '';
+    }
+    if (savingsContainer) savingsContainer.classList.add('d-none');
+  } else if (isTransfer) {
+    if (catRow) catRow.classList.add('d-none');
+    if (catCol) catCol.classList.add('d-none');
+    if (subcatCol) subcatCol.classList.add('d-none');
+    if (fundSourceCol) fundSourceCol.classList.add('d-none');
+    if (transferTypeCol) transferTypeCol.classList.remove('d-none');
     if (tomSelectEditCategory) tomSelectEditCategory.setValue('', true);
     if (tomSelectEditSubcategory) tomSelectEditSubcategory.setValue('', true);
     if (catSelect) {
@@ -321,6 +398,8 @@ function handleEditTypeChange() {
     if (catRow) catRow.classList.remove('d-none');
     if (catCol) catCol.classList.remove('d-none');
     if (subcatCol) subcatCol.classList.remove('d-none');
+    if (fundSourceCol) fundSourceCol.classList.remove('d-none');
+    if (transferTypeCol) transferTypeCol.classList.add('d-none');
     if (catSelect) catSelect.required = true;
     handleEditCategoryChange();
   }
@@ -474,9 +553,7 @@ function removeFile(e) {
 function resetForm() {
   document.getElementById('add-transaction-form').reset();
   document.getElementById('txn-date').value = getToday();
-  const typeExpense = document.getElementById('type-expense');
-  if (typeExpense) typeExpense.checked = true;
-  handleTypeChange();
+  switchTxnType('expense');
 
   if (tomSelectFormCategory) {
     tomSelectFormCategory.setValue('', true);
@@ -500,18 +577,17 @@ function resetForm() {
   const fundSourceEl = document.getElementById('txn-fund-source');
   if (fundSourceEl) fundSourceEl.value = 'bank';
 
+  const transferTypeEl = document.getElementById('txn-transfer-type');
+  if (transferTypeEl) transferTypeEl.value = 'bank_to_cash';
+
   removeFile();
 }
 
 async function submitTransaction() {
   const submitBtn = document.querySelector('#add-transaction-form button[type="submit"]');
-  const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
-  const type = isIncome ? 'income' : 'expense';
-  const fundSourceEl = document.getElementById('txn-fund-source');
-  const fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
+  const selectedType = document.getElementById('selected-txn-type') ? document.getElementById('selected-txn-type').value : (currentTxnType || 'expense');
+  const type = selectedType;
   const date = document.getElementById('txn-date').value;
-  const categoryId = isIncome ? null : (tomSelectFormCategory ? tomSelectFormCategory.getValue() : (formCategory ? formCategory.value : null));
-  const subcategoryId = isIncome ? null : ((tomSelectFormSubcategory ? tomSelectFormSubcategory.getValue() : (formSubcategory ? formSubcategory.value : null)) || null);
   const description = document.getElementById('txn-desc').value;
   const amount = parseRupiah(document.getElementById('txn-amount').value);
   
@@ -520,7 +596,42 @@ async function submitTransaction() {
     return;
   }
 
-  if (type === 'expense') {
+  let fundSource = 'bank';
+  let fundDestination = null;
+  let categoryId = null;
+  let subcategoryId = null;
+
+  if (type === 'transfer') {
+    const transferTypeEl = document.getElementById('txn-transfer-type');
+    const transferType = transferTypeEl ? transferTypeEl.value : 'bank_to_cash';
+
+    if (transferType === 'bank_to_cash') {
+      fundSource = 'bank';
+      fundDestination = 'cash';
+    } else {
+      fundSource = 'cash';
+      fundDestination = 'bank';
+    }
+
+    // Validasi: Cek apakah nominal mutasi melebihi sisa saldo di sumber dana
+    const { sisaBank, sisaCash } = calculateFundSourceBalances();
+    if (fundSource === 'bank' && amount > sisaBank) {
+      alert(`Saldo Bank tidak mencukupi untuk penarikan ini. Sisa Saldo Bank: ${formatRupiah(sisaBank)}`);
+      return;
+    } else if (fundSource === 'cash' && amount > sisaCash) {
+      alert(`Saldo Uang Tunai tidak mencukupi untuk penyetoran ini. Sisa Saldo Tunai: ${formatRupiah(sisaCash)}`);
+      return;
+    }
+  } else if (type === 'income') {
+    const fundSourceEl = document.getElementById('txn-fund-source');
+    fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
+  } else {
+    // Expense
+    const fundSourceEl = document.getElementById('txn-fund-source');
+    fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
+    categoryId = tomSelectFormCategory ? tomSelectFormCategory.getValue() : (formCategory ? formCategory.value : null);
+    subcategoryId = (tomSelectFormSubcategory ? tomSelectFormSubcategory.getValue() : (formSubcategory ? formSubcategory.value : null)) || null;
+
     if (!categoryId) {
       alert('Harap pilih kategori pengeluaran.');
       if (tomSelectFormCategory) tomSelectFormCategory.focus();
@@ -564,6 +675,8 @@ async function submitTransaction() {
           type,
           fund_source: fundSource,
           fundSource: fundSource,
+          fund_destination: fundDestination,
+          fundDestination: fundDestination,
           date,
           categoryId,
           subcategoryId,
@@ -591,10 +704,12 @@ async function submitTransaction() {
     type,
     fund_source: fundSource,
     fundSource: fundSource,
+    fund_destination: fundDestination,
+    fundDestination: fundDestination,
     date,
     categoryId,
     subcategoryId,
-    description,
+    description: description || (type === 'transfer' ? (fundSource === 'bank' ? 'Tarik Tunai' : 'Setor Tunai') : ''),
     amount,
   };
   
@@ -618,7 +733,7 @@ async function submitTransaction() {
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = 'Simpan';
+      submitBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Simpan';
     }
   }
 }
@@ -954,6 +1069,7 @@ async function renderTable() {
   for (const txn of pageItems) {
     const isIncome = txn.type === 'income';
     const isReallocation = txn.type === 'reallocation';
+    const isTransfer = txn.type === 'transfer';
     const isSystem = txn.is_system || txn.isSystem || isReallocation;
     let categoryHtml = '';
     let amountHtml = '';
@@ -970,6 +1086,13 @@ async function renderTable() {
       categoryHtml = `
         <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle rounded-pill fw-semibold px-2 py-1">
           <i class="bi bi-arrow-left-right me-1"></i>Realokasi
+        </span>
+      `;
+      amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${formatRupiah(txn.amount)}</span>`;
+    } else if (isTransfer) {
+      categoryHtml = `
+        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle rounded-pill fw-semibold px-2 py-1">
+          <i class="bi bi-arrow-left-right me-1"></i>Mutasi
         </span>
       `;
       amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${formatRupiah(txn.amount)}</span>`;
@@ -1018,9 +1141,20 @@ async function renderTable() {
     }
 
     const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
-    const fundBadge = fundSource === 'cash'
-      ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-cash me-1"></i>Tunai</span>`
-      : `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-bank me-1"></i>Bank</span>`;
+    const fundDestination = (txn.fund_destination || txn.fundDestination || '').toLowerCase();
+    
+    let fundBadge = '';
+    if (isTransfer) {
+      if (fundSource === 'bank' || fundDestination === 'cash') {
+        fundBadge = `<span class="badge bg-light text-dark border border-secondary-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-bank text-primary me-1"></i>Bank &rarr; <i class="bi bi-cash text-success ms-1 me-1"></i>Tunai</span>`;
+      } else {
+        fundBadge = `<span class="badge bg-light text-dark border border-secondary-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-cash text-success me-1"></i>Tunai &rarr; <i class="bi bi-bank text-primary ms-1 me-1"></i>Bank</span>`;
+      }
+    } else {
+      fundBadge = fundSource === 'cash'
+        ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-cash me-1"></i>Tunai</span>`
+        : `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-bank me-1"></i>Bank</span>`;
+    }
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1145,11 +1279,15 @@ function openEditDialog(txnId) {
   
   document.getElementById('edit-txn-id').value = txn.id;
   const isIncome = txn.type === 'income';
+  const isTransfer = txn.type === 'transfer';
   const editTypeIncome = document.getElementById('edit-type-income');
   const editTypeExpense = document.getElementById('edit-type-expense');
+  const editTypeTransfer = document.getElementById('edit-type-transfer');
+
   if (editTypeIncome && editTypeExpense) {
     editTypeIncome.checked = isIncome;
-    editTypeExpense.checked = !isIncome;
+    editTypeExpense.checked = (!isIncome && !isTransfer);
+    if (editTypeTransfer) editTypeTransfer.checked = isTransfer;
   }
   handleEditTypeChange();
 
@@ -1162,12 +1300,18 @@ function openEditDialog(txnId) {
   if (editFundSourceEl) {
     editFundSourceEl.value = txn.fund_source || txn.fundSource || 'bank';
   }
+
+  const editTransferTypeEl = document.getElementById('edit-txn-transfer-type');
+  if (editTransferTypeEl && isTransfer) {
+    const src = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    editTransferTypeEl.value = (src === 'cash') ? 'cash_to_bank' : 'bank_to_cash';
+  }
   
   const amountInput = document.getElementById('edit-txn-amount');
   amountInput.value = txn.amount;
   formatInputRupiah(amountInput);
   
-  if (!isIncome && txn.categoryId) {
+  if (!isIncome && !isTransfer && txn.categoryId) {
     if (tomSelectEditCategory) {
       tomSelectEditCategory.setValue(txn.categoryId, true);
     } else {
@@ -1194,13 +1338,10 @@ function closeEditDialog() {
 async function submitEditTransaction() {
   const saveBtn = document.querySelector('#editTxnDialog button[type="submit"]');
   const isIncome = document.getElementById('edit-type-income') ? document.getElementById('edit-type-income').checked : false;
-  const type = isIncome ? 'income' : 'expense';
+  const isTransfer = document.getElementById('edit-type-transfer') ? document.getElementById('edit-type-transfer').checked : false;
+  const type = isIncome ? 'income' : (isTransfer ? 'transfer' : 'expense');
   const id = document.getElementById('edit-txn-id').value;
-  const fundSourceEl = document.getElementById('edit-txn-fund-source');
-  const fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
   const date = document.getElementById('edit-txn-date').value;
-  const categoryId = isIncome ? null : (tomSelectEditCategory ? tomSelectEditCategory.getValue() : (editCategory ? editCategory.value : null));
-  const subcategoryId = isIncome ? null : ((tomSelectEditSubcategory ? tomSelectEditSubcategory.getValue() : (editSubcategory ? editSubcategory.value : null)) || null);
   const description = document.getElementById('edit-txn-desc').value;
   const amount = parseRupiah(document.getElementById('edit-txn-amount').value);
   
@@ -1209,7 +1350,31 @@ async function submitEditTransaction() {
     return;
   }
 
-  if (type === 'expense') {
+  let fundSource = 'bank';
+  let fundDestination = null;
+  let categoryId = null;
+  let subcategoryId = null;
+
+  if (type === 'transfer') {
+    const editTransferTypeEl = document.getElementById('edit-txn-transfer-type');
+    const transferType = editTransferTypeEl ? editTransferTypeEl.value : 'bank_to_cash';
+    if (transferType === 'bank_to_cash') {
+      fundSource = 'bank';
+      fundDestination = 'cash';
+    } else {
+      fundSource = 'cash';
+      fundDestination = 'bank';
+    }
+  } else if (type === 'income') {
+    const fundSourceEl = document.getElementById('edit-txn-fund-source');
+    fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
+  } else {
+    // Expense
+    const fundSourceEl = document.getElementById('edit-txn-fund-source');
+    fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
+    categoryId = tomSelectEditCategory ? tomSelectEditCategory.getValue() : (editCategory ? editCategory.value : null);
+    subcategoryId = (tomSelectEditSubcategory ? tomSelectEditSubcategory.getValue() : (editSubcategory ? editSubcategory.value : null)) || null;
+
     if (!categoryId) {
       alert('Harap pilih kategori pengeluaran.');
       if (tomSelectEditCategory) tomSelectEditCategory.focus();
@@ -1236,6 +1401,8 @@ async function submitEditTransaction() {
       type,
       fund_source: fundSource,
       fundSource: fundSource,
+      fund_destination: fundDestination,
+      fundDestination: fundDestination,
       date,
       categoryId,
       subcategoryId,
@@ -1314,6 +1481,7 @@ function exportToCSV() {
   transactions.forEach(txn => {
     const isIncome = txn.type === 'income';
     const isReallocation = txn.type === 'reallocation';
+    const isTransfer = txn.type === 'transfer';
     let typeLabel = 'Pengeluaran';
     let catName = '-';
     let subName = '-';
@@ -1322,6 +1490,9 @@ function exportToCSV() {
       typeLabel = 'Pemasukan';
     } else if (isReallocation) {
       typeLabel = 'Realokasi';
+    } else if (isTransfer) {
+      typeLabel = 'Mutasi Saldo';
+      catName = (txn.fund_source === 'cash' || txn.fund_destination === 'bank') ? 'Setor Tunai (Tunai ke Bank)' : 'Tarik Tunai (Bank ke Tunai)';
     } else {
       const cat = categories.find(c => c.id == txn.categoryId);
       if (cat) {
@@ -1334,7 +1505,7 @@ function exportToCSV() {
     }
 
     const desc = (txn.description || '').replace(/"/g, '""');
-    const amountVal = isIncome ? txn.amount : (isReallocation ? txn.amount : -txn.amount);
+    const amountVal = isIncome ? txn.amount : (isReallocation ? txn.amount : (isTransfer ? txn.amount : -txn.amount));
 
     rows.push([
       `"${txn.date}"`,

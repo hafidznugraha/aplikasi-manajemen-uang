@@ -141,6 +141,7 @@
             <option value="">Semua Tipe</option>
             <option value="expense">Pengeluaran</option>
             <option value="income">Pemasukan</option>
+            <option value="transfer">Mutasi Saldo</option>
             <option value="reallocation">Realokasi</option>
           </select>
         </div>
@@ -222,33 +223,46 @@
         <form id="add-transaction-form" onsubmit="event.preventDefault(); submitTransaction();">
           <div class="modal-body px-4 py-3">
             
-            <!-- Tipe Transaksi: Pengeluaran vs Pemasukan -->
+            <!-- Nav-Tabs Tipe Transaksi: Pengeluaran, Pemasukan Tambahan, Mutasi Saldo -->
             <div class="mb-4">
-              <label class="form-label fw-semibold text-dark small mb-2">Tipe Transaksi</label>
-              <div class="btn-group w-100" role="group" aria-label="Tipe Transaksi">
-                <input type="radio" class="btn-check" name="txn-type" id="type-expense" value="expense" checked autocomplete="off" onchange="handleTypeChange()">
-                <label class="btn btn-outline-danger fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-expense">
-                  <i class="bi bi-dash-circle-fill"></i> Pengeluaran
-                </label>
-
-                <input type="radio" class="btn-check" name="txn-type" id="type-income" value="income" autocomplete="off" onchange="handleTypeChange()">
-                <label class="btn btn-outline-success fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="type-income">
-                  <i class="bi bi-plus-circle-fill"></i> Pemasukan Tambahan
-                </label>
-              </div>
+              <ul class="nav nav-tabs nav-fill" id="txn-nav-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active fw-semibold text-danger d-flex align-items-center justify-content-center gap-2" id="tab-expense" type="button" role="tab" onclick="switchTxnType('expense')">
+                    <i class="bi bi-dash-circle-fill"></i> Pengeluaran
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link fw-semibold text-success d-flex align-items-center justify-content-center gap-2" id="tab-income" type="button" role="tab" onclick="switchTxnType('income')">
+                    <i class="bi bi-plus-circle-fill"></i> Pemasukan Tambahan
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link fw-semibold text-primary d-flex align-items-center justify-content-center gap-2" id="tab-transfer" type="button" role="tab" onclick="switchTxnType('transfer')">
+                    <i class="bi bi-arrow-left-right"></i> Mutasi Saldo
+                  </button>
+                </li>
+              </ul>
+              <input type="hidden" id="selected-txn-type" value="expense">
             </div>
 
-            <!-- Baris 1: Tanggal & Sumber Dana -->
+            <!-- Baris 1: Tanggal & Sumber Dana / Jenis Mutasi -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <label for="txn-date" class="form-label fw-medium small">Tanggal</label>
                 <input type="date" class="form-control" id="txn-date" required>
               </div>
-              <div class="col-md-6">
+              <div class="col-md-6" id="fund-source-col">
                 <label for="txn-fund-source" class="form-label fw-medium small">Sumber Dana</label>
                 <select id="txn-fund-source" class="form-select" required>
                   <option value="bank" selected>Saldo Bank / E-Wallet</option>
                   <option value="cash">Uang Tunai</option>
+                </select>
+              </div>
+              <div class="col-md-6 d-none" id="transfer-type-col">
+                <label for="txn-transfer-type" class="form-label fw-medium small">Jenis Mutasi</label>
+                <select id="txn-transfer-type" class="form-select">
+                  <option value="bank_to_cash" selected>Tarik Tunai (Bank ke Tunai)</option>
+                  <option value="cash_to_bank">Setor Tunai (Tunai ke Bank)</option>
                 </select>
               </div>
             </div>
@@ -364,20 +378,32 @@
             <label class="btn btn-outline-success btn-sm fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="edit-type-income">
               <i class="bi bi-plus-circle-fill"></i> Pemasukan
             </label>
+
+            <input type="radio" class="btn-check" name="edit-txn-type" id="edit-type-transfer" value="transfer" autocomplete="off" onchange="handleEditTypeChange()">
+            <label class="btn btn-outline-primary btn-sm fw-semibold py-2 d-flex align-items-center justify-content-center gap-2" for="edit-type-transfer">
+              <i class="bi bi-arrow-left-right"></i> Mutasi Saldo
+            </label>
           </div>
         </div>
 
-        <!-- Baris 1: Tanggal & Sumber Dana -->
+        <!-- Baris 1: Tanggal & Sumber Dana / Jenis Mutasi -->
         <div class="row g-3 mb-3">
           <div class="col-md-6">
             <label for="edit-txn-date" class="form-label">Tanggal</label>
             <input type="date" class="form-control" id="edit-txn-date" required>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-6" id="edit-fund-source-col">
             <label for="edit-txn-fund-source" class="form-label">Sumber Dana</label>
             <select id="edit-txn-fund-source" class="form-select" required>
               <option value="bank" selected>Saldo Bank / E-Wallet</option>
               <option value="cash">Uang Tunai</option>
+            </select>
+          </div>
+          <div class="col-md-6 d-none" id="edit-transfer-type-col">
+            <label for="edit-txn-transfer-type" class="form-label">Jenis Mutasi</label>
+            <select id="edit-txn-transfer-type" class="form-select">
+              <option value="bank_to_cash" selected>Tarik Tunai (Bank ke Tunai)</option>
+              <option value="cash_to_bank">Setor Tunai (Tunai ke Bank)</option>
             </select>
           </div>
         </div>
