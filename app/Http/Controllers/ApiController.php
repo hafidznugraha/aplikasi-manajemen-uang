@@ -85,6 +85,9 @@ class ApiController extends Controller
                 'id' => (string) $budget->id,
                 'month' => $budget->month,
                 'totalBudget' => (int) $budget->total_budget,
+                'totalCash' => (int) ($budget->total_cash ?? 0),
+                'total_budget' => (int) $budget->total_budget,
+                'total_cash' => (int) ($budget->total_cash ?? 0),
                 'categories' => $budget->categories->map(function ($cat) {
                     return [
                         'id' => (string) $cat->id,
@@ -207,22 +210,28 @@ class ApiController extends Controller
             'id' => (string) $budget->id,
             'month' => $budget->month,
             'totalBudget' => (int) $budget->total_budget,
+            'totalCash' => (int) ($budget->total_cash ?? 0),
+            'total_budget' => (int) $budget->total_budget,
+            'total_cash' => (int) ($budget->total_cash ?? 0),
             'categories' => $categoriesFormatted,
         ]);
     }
 
     /**
-     * Update total budget bulanan
+     * Update total budget bulanan (Bank & Tunai)
      */
     public function updateTotalBudget(Request $request): JsonResponse
     {
         $request->validate([
             'month' => 'nullable|string',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'nullable|numeric|min:0',
+            'total_budget' => 'nullable|numeric|min:0',
+            'total_cash' => 'nullable|numeric|min:0',
         ]);
 
         $month = $request->input('month', now()->format('Y-m'));
-        $amount = (int) $request->input('amount');
+        $amount = (int) $request->input('amount', $request->input('total_budget', 0));
+        $cash = (int) $request->input('total_cash', 0);
         $userId = $this->getUserIdFromRequest($request);
 
         $match = ['month' => $month];
@@ -232,12 +241,16 @@ class ApiController extends Controller
 
         $budget = Budget::updateOrCreate(
             $match,
-            ['total_budget' => $amount]
+            [
+                'total_budget' => $amount,
+                'total_cash' => $cash,
+            ]
         );
 
         return response()->json([
             'success' => true,
             'totalBudget' => (int) $budget->total_budget,
+            'totalCash' => (int) $budget->total_cash,
             'month' => $budget->month,
         ]);
     }

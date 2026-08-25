@@ -92,18 +92,43 @@
 
     <!-- Total Uang Bulanan Card -->
     <div class="card card-budgetku mb-4">
-      <div class="card-body">
-        <h5 class="card-title">Total Uang Bulanan</h5>
-        <p class="text-muted small">Masukkan total pendapatan atau alokasi bulan ini</p>
-        <div class="input-group">
-          <span class="input-group-text bg-white border-end-0">Rp</span>
-          <input type="text" class="form-control form-control-lg fw-bold border-start-0" id="total-budget-input" placeholder="0">
-          <button class="btn btn-primary px-4 fw-semibold" id="btn-set-budget" type="button">
-            <i class="bi bi-check-lg"></i> Set
-          </button>
+      <div class="card-body p-4">
+        <h5 class="card-title fw-bold text-dark mb-1">Total Uang Bulanan</h5>
+        <p class="text-muted small mb-3">Masukkan total alokasi saldo awal bulan ini berdasarkan sumber dana Anda</p>
+        
+        <div class="row g-3">
+          <!-- Saldo Bank / E-Wallet -->
+          <div class="col-12 col-md-6">
+            <label for="total-budget-input" class="form-label fw-semibold text-dark small mb-1">
+              <i class="bi bi-bank text-primary me-1"></i> Saldo Bank / E-Wallet
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-white">Rp</span>
+              <input type="text" class="form-control form-control-lg fw-bold" id="total-budget-input" placeholder="0">
+            </div>
+            <div class="form-text small text-muted">Rekening bank, mobile banking, atau dompet digital.</div>
+          </div>
+
+          <!-- Uang Tunai -->
+          <div class="col-12 col-md-6">
+            <label for="total-cash-input" class="form-label fw-semibold text-dark small mb-1">
+              <i class="bi bi-cash-stack text-success me-1"></i> Uang Tunai (Cash)
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-white">Rp</span>
+              <input type="text" class="form-control form-control-lg fw-bold" id="total-cash-input" placeholder="0">
+            </div>
+            <div class="form-text small text-muted">Uang fisik di dompet, amplop, atau brankas.</div>
+          </div>
         </div>
-        <div id="budget-saved-feedback" class="form-text text-success d-none mt-2">
-          <i class="bi bi-check-circle-fill"></i> Total budget bulanan berhasil disimpan.
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end align-items-center mt-3 pt-2">
+          <div id="budget-saved-feedback" class="form-text text-success d-none mb-0 me-md-3">
+            <i class="bi bi-check-circle-fill"></i> Total budget bulanan berhasil disimpan.
+          </div>
+          <button class="btn btn-primary px-4 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2" id="btn-set-budget" type="button">
+            <i class="bi bi-check-lg"></i> Set Budget
+          </button>
         </div>
       </div>
     </div>

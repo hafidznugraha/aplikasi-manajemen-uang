@@ -18,10 +18,12 @@ class Budget extends Model
         'user_id',
         'month',
         'total_budget',
+        'total_cash',
     ];
 
     protected $casts = [
         'total_budget' => 'integer',
+        'total_cash' => 'integer',
     ];
 
     public function user(): BelongsTo

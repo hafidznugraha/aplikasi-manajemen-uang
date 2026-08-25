@@ -1,10 +1,11 @@
 /* ============================================================
    BudgetKu — Setup Budget Module (budget.js)
-   Refactored for Supabase Cloud Database Direct Synchronization.
-   LocalStorage for budget and categories removed.
+   Refactored for Multi-Source Fund Allocation (Bank & Tunai).
+   Direct Supabase Database Synchronization.
    ============================================================ */
 
 let totalBudgetInput;
+let totalCashInput;
 let categoriesContainer;
 let emptyStateCategories;
 let btnAddCategoryTop;
@@ -78,7 +79,8 @@ async function getActiveSupabaseUser() {
  * Inisialisasi Halaman Budget
  */
 window.initBudget = async function() {
-  totalBudgetInput = document.getElementById('total-budget-input');
+  totalBudgetInput = document.getElementById('total-budget-input') || document.getElementById('total_budget');
+  totalCashInput = document.getElementById('total-cash-input') || document.getElementById('total_cash');
   categoriesContainer = document.getElementById('categories-container');
   emptyStateCategories = document.getElementById('empty-state-categories');
   btnAddCategoryTop = document.getElementById('btn-add-category-top');
@@ -93,7 +95,7 @@ window.initBudget = async function() {
   renderCategories();
   updateAllocationSummary();
 
-  // Muat data total budget langsung dari Supabase saat halaman dimuat
+  // Muat data total budget & cash langsung dari Supabase saat halaman dimuat
   await loadBudgetDataFromSupabase();
 };
 
@@ -101,14 +103,33 @@ window.initBudget = async function() {
  * Setup Event Listener interaksi form & modal
  */
 function setupEventListeners() {
+  // Input Saldo Bank / E-Wallet
   if (totalBudgetInput) {
     totalBudgetInput.addEventListener('input', (e) => {
       if (window.formatInputRupiah) {
         window.formatInputRupiah(e.target);
       }
+      updateAllocationSummary();
     });
 
     totalBudgetInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSetBudget();
+      }
+    });
+  }
+
+  // Input Uang Tunai (Cash)
+  if (totalCashInput) {
+    totalCashInput.addEventListener('input', (e) => {
+      if (window.formatInputRupiah) {
+        window.formatInputRupiah(e.target);
+      }
+      updateAllocationSummary();
+    });
+
+    totalCashInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         handleSetBudget();
@@ -167,7 +188,7 @@ function setupEventListeners() {
 /**
  * 2. Integrasi Read Data (Supabase):
  * Ambil session user aktif, query SELECT ke tabel 'budgets' berdasarkan user_id dan month,
- * lalu tampilkan total_budget ke dalam input form.
+ * lalu tampilkan total_budget (Bank) dan total_cash (Tunai) ke dalam input form masing-masing.
  */
 async function loadBudgetDataFromSupabase() {
   const client = getSupabaseClient();
@@ -209,19 +230,34 @@ async function loadBudgetDataFromSupabase() {
       return;
     }
 
-    if (data && data.total_budget != null) {
-      const amount = Number(data.total_budget);
+    if (data) {
+      const bankAmount = Number(data.total_budget) || 0;
+      const cashAmount = Number(data.total_cash) || 0;
+
       if (totalBudgetInput) {
-        totalBudgetInput.value = window.formatRupiah ? window.formatRupiah(amount).replace('Rp ', '') : String(amount);
+        totalBudgetInput.value = bankAmount > 0 
+          ? (window.formatRupiah ? window.formatRupiah(bankAmount).replace('Rp ', '') : String(bankAmount)) 
+          : '';
       }
+
+      if (totalCashInput) {
+        totalCashInput.value = cashAmount > 0 
+          ? (window.formatRupiah ? window.formatRupiah(cashAmount).replace('Rp ', '') : String(cashAmount)) 
+          : '';
+      }
+
       if (typeof window.getBudget === 'function') {
         const inMemory = window.getBudget();
-        inMemory.totalBudget = amount;
+        inMemory.totalBudget = bankAmount;
+        inMemory.total_budget = bankAmount;
+        inMemory.totalCash = cashAmount;
+        inMemory.total_cash = cashAmount;
         inMemory.month = currentMonth;
         inMemory.user_id = user.id;
       }
     } else {
       if (totalBudgetInput) totalBudgetInput.value = '';
+      if (totalCashInput) totalCashInput.value = '';
     }
 
     updateAllocationSummary();
@@ -236,26 +272,37 @@ async function loadBudgetDataFromSupabase() {
 function renderTotalBudgetFromMemory() {
   if (typeof window.getBudget === 'function') {
     const budget = window.getBudget();
-    if (budget && budget.totalBudget > 0 && totalBudgetInput) {
-      totalBudgetInput.value = window.formatRupiah(budget.totalBudget).replace('Rp ', '');
-    } else if (totalBudgetInput) {
-      totalBudgetInput.value = '';
+    const bankAmount = budget.totalBudget || budget.total_budget || 0;
+    const cashAmount = budget.totalCash || budget.total_cash || 0;
+
+    if (totalBudgetInput) {
+      totalBudgetInput.value = bankAmount > 0 ? window.formatRupiah(bankAmount).replace('Rp ', '') : '';
+    }
+    if (totalCashInput) {
+      totalCashInput.value = cashAmount > 0 ? window.formatRupiah(cashAmount).replace('Rp ', '') : '';
     }
   }
 }
 
 /**
- * 3. Integrasi Write/Save Data (Supabase) & 4. Error Handling:
+ * 3. Integrasi Write/Save Data (Supabase) & Error Handling:
  * Saat tombol "Set" ditekan, jalankan fungsi upsert ke tabel 'budgets'
- * Payload: { user_id, month, total_budget }
- * Berikan alert sukses atau alert error dengan pesan asli dari Supabase.
+ * Payload: { user_id, month, total_budget, total_cash }
  */
 async function handleSetBudget() {
   const btn = document.getElementById('btn-set-budget');
-  const amountStr = totalBudgetInput ? totalBudgetInput.value : '';
-  const totalBudget = window.parseRupiah 
-    ? window.parseRupiah(amountStr) 
-    : parseInt(amountStr.replace(/[^0-9]/g, ''), 10) || 0;
+  const bankStr = totalBudgetInput ? totalBudgetInput.value : '';
+  const cashStr = totalCashInput ? totalCashInput.value : '';
+
+  const bankBudget = window.parseRupiah 
+    ? window.parseRupiah(bankStr) 
+    : parseInt(bankStr.replace(/[^0-9]/g, ''), 10) || 0;
+
+  const cashBudget = window.parseRupiah 
+    ? window.parseRupiah(cashStr) 
+    : parseInt(cashStr.replace(/[^0-9]/g, ''), 10) || 0;
+
+  const grandTotal = bankBudget + cashBudget;
 
   const client = getSupabaseClient();
   if (!client) {
@@ -288,11 +335,12 @@ async function handleSetBudget() {
       ? window.getCurrentMonth()
       : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
 
-    // Siapkan payload sesuai spesifikasi
+    // Payload multi-sumber dana (Bank & Tunai)
     const payload = {
       user_id: user.id,
       month: currentMonth,
-      total_budget: totalBudget
+      total_budget: bankBudget,
+      total_cash: cashBudget
     };
 
     // Jalankan operasi upsert (Update or Insert) ke tabel budgets
@@ -308,25 +356,28 @@ async function handleSetBudget() {
     // Update in-memory cache dan sinkronisasi
     if (typeof window.getBudget === 'function') {
       const b = window.getBudget();
-      b.totalBudget = totalBudget;
+      b.totalBudget = bankBudget;
+      b.total_budget = bankBudget;
+      b.totalCash = cashBudget;
+      b.total_cash = cashBudget;
       b.month = currentMonth;
       b.user_id = user.id;
     }
     if (typeof window.updateTotalBudget === 'function') {
-      window.updateTotalBudget(totalBudget);
+      window.updateTotalBudget(bankBudget, cashBudget);
     }
 
     updateAllocationSummary();
 
-    // 4. Alert Sukses
+    // Alert Sukses yang profesional
     if (typeof window.showAppModal === 'function') {
       window.showAppModal({
         title: 'Berhasil Disimpan',
-        message: `Total uang bulanan sebesar <strong>${window.formatRupiah ? window.formatRupiah(totalBudget) : 'Rp ' + totalBudget}</strong> berhasil disimpan.`,
+        message: `Total alokasi uang bulanan sebesar <strong>${window.formatRupiah ? window.formatRupiah(grandTotal) : 'Rp ' + grandTotal}</strong> (Bank: ${window.formatRupiah ? window.formatRupiah(bankBudget) : 'Rp ' + bankBudget}, Tunai: ${window.formatRupiah ? window.formatRupiah(cashBudget) : 'Rp ' + cashBudget}) berhasil disimpan.`,
         type: 'success'
       });
     } else {
-      alert(`Total uang bulanan sebesar ${window.formatRupiah ? window.formatRupiah(totalBudget) : 'Rp ' + totalBudget} berhasil disimpan.`);
+      alert(`Total uang bulanan sebesar ${window.formatRupiah ? window.formatRupiah(grandTotal) : 'Rp ' + grandTotal} berhasil disimpan.`);
     }
 
     const feedback = document.getElementById('budget-saved-feedback');
@@ -340,11 +391,10 @@ async function handleSetBudget() {
     if (btn) {
       btn.innerHTML = '<i class="bi bi-check-lg"></i> Tersimpan!';
       setTimeout(() => {
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> Set';
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Set Budget';
       }, 2000);
     }
   } catch (err) {
-    // 4. Error Handling: Tampilkan pesan asli error (misal RLS / network issue)
     console.error('[Supabase] Gagal melakukan upsert budget:', err);
     const errorMessage = err.message || err.error_description || 'Terjadi kendala saat menyimpan data budget.';
     
@@ -529,22 +579,38 @@ function renderCategories() {
 }
 
 /**
- * Update Ringkasan Alokasi Budget di Footer
+ * 3. Update Ringkasan Alokasi Budget di Footer (Grand Total Budget Calculation)
+ * Grand Total Budget = Nilai Saldo Bank + Nilai Uang Tunai
  */
 function updateAllocationSummary() {
   if (!allocatedText || !allocationProgress || !allocationBadge) return;
 
-  const budgetData = typeof window.getBudget === 'function' ? window.getBudget() : { totalBudget: 0, categories: [] };
-  const baselineBudget = budgetData.totalBudget || 0;
+  const budgetData = typeof window.getBudget === 'function' ? window.getBudget() : { totalBudget: 0, totalCash: 0, categories: [] };
+  
+  // Nilai Bank dan Tunai dasar dari in-memory
+  let bankAmount = budgetData.totalBudget || budgetData.total_budget || 0;
+  let cashAmount = budgetData.totalCash || budgetData.total_cash || 0;
+
+  // Jika input sedang diisi / diedit, prioritaskan nilai real-time dari input form
+  if (totalBudgetInput && totalCashInput) {
+    if (totalBudgetInput.value !== '' || totalCashInput.value !== '') {
+      bankAmount = window.parseRupiah ? window.parseRupiah(totalBudgetInput.value) : 0;
+      cashAmount = window.parseRupiah ? window.parseRupiah(totalCashInput.value) : 0;
+    }
+  }
+
+  // Grand Total Budget = Saldo Bank + Uang Tunai
+  const grandTotalBudget = bankAmount + cashAmount;
+
   const totalIncome = typeof window.getTotalIncome === 'function' ? window.getTotalIncome() : 0;
-  const totalCapacity = baselineBudget + totalIncome;
+  const totalCapacity = grandTotalBudget + totalIncome;
   
   const allocated = (budgetData.categories || []).reduce((sum, cat) => sum + (cat.budget || 0), 0);
   
   if (totalIncome > 0) {
     allocatedText.innerHTML = `${window.formatRupiah(allocated)} / ${window.formatRupiah(totalCapacity)} <small class="text-success fw-normal" style="font-size: 0.82rem;">(termasuk tambahan ${window.formatRupiah(totalIncome)})</small>`;
   } else {
-    allocatedText.textContent = `${window.formatRupiah(allocated)} / ${window.formatRupiah(baselineBudget)}`;
+    allocatedText.textContent = `${window.formatRupiah(allocated)} / ${window.formatRupiah(grandTotalBudget)}`;
   }
   
   let percentage = 0;
@@ -555,7 +621,6 @@ function updateAllocationSummary() {
   }
   
   allocationProgress.style.width = `${Math.min(percentage, 100)}%`;
-  
   allocationProgress.className = 'progress-bar';
   allocationBadge.className = 'badge';
   
@@ -567,7 +632,7 @@ function updateAllocationSummary() {
     allocationProgress.classList.add('bg-danger');
     allocationBadge.classList.add('bg-danger');
     allocationBadge.textContent = 'Over Budget';
-  } else if (Math.round(percentage) === 100) {
+  } else if (Math.round(percentage) === 100 && totalCapacity > 0) {
     allocationProgress.classList.add('bg-success');
     allocationBadge.classList.add('bg-success');
     allocationBadge.textContent = 'Alokasi Pas';

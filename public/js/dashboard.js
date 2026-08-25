@@ -44,12 +44,17 @@ async function initDashboard() {
 
       if (!error && data) {
         budgetData = data;
-        totalBudget = Number(data.total_budget) || 0;
+        const bankBudget = Number(data.total_budget) || 0;
+        const cashBudget = Number(data.total_cash) || 0;
+        totalBudget = bankBudget + cashBudget;
         
         // Update in-memory state
         if (typeof window.getBudget === 'function') {
           const inMem = window.getBudget();
           inMem.totalBudget = totalBudget;
+          inMem.total_budget = bankBudget;
+          inMem.totalCash = cashBudget;
+          inMem.total_cash = cashBudget;
           inMem.month = currentMonth;
           inMem.user_id = user.id;
         }
@@ -59,8 +64,11 @@ async function initDashboard() {
     // Fallback ke in-memory jika direct query tidak mengembalikan data
     if (!budgetData && typeof window.getBudget === 'function') {
       const inMem = window.getBudget();
-      if (inMem && inMem.totalBudget > 0) {
-        totalBudget = inMem.totalBudget;
+      const inMemBank = inMem.total_budget != null ? inMem.total_budget : inMem.totalBudget;
+      const inMemCash = inMem.total_cash != null ? inMem.total_cash : (inMem.totalCash || 0);
+      const combined = (inMemBank || 0) + (inMemCash || 0);
+      if (combined > 0) {
+        totalBudget = combined;
         budgetData = inMem;
       }
     }

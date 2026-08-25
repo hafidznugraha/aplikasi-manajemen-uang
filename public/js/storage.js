@@ -41,6 +41,9 @@ function getCacheKey() {
 let _currentBudget = {
   month: getCurrentMonth(),
   totalBudget: 0,
+  total_budget: 0,
+  totalCash: 0,
+  total_cash: 0,
   categories: [],
   user_id: getActiveUserId(),
   userId: getActiveUserId(),
@@ -51,9 +54,8 @@ let _supabaseClient = null;
 
 /**
  * Inisialisasi Storage:
- * 1. Instant boot dari localStorage Hot-Cache milik user aktif (0ms delay!)
- * 2. Background sync kilat via 1 single request /api/sync
- * 3. Setup Supabase Realtime WebSocket
+ * 1. Setup Supabase Realtime WebSocket
+ * 2. Background sync kilat langsung dari database Supabase
  */
 async function initStorage() {
   const month = getCurrentMonth();
@@ -63,6 +65,9 @@ async function initStorage() {
   _currentBudget = {
     month: month,
     totalBudget: 0,
+    total_budget: 0,
+    totalCash: 0,
+    total_cash: 0,
     categories: [],
     user_id: userId,
     userId: userId,
@@ -241,11 +246,14 @@ function saveBudget(budget) {
 }
 
 /**
- * Update total budget (Optimistic + Background Async Sync)
+ * Update total budget (Bank & Tunai) (Optimistic + Background Async Sync)
  */
-async function updateTotalBudget(amount) {
+async function updateTotalBudget(amount, cashAmount = 0) {
   const userId = getActiveUserId();
   _currentBudget.totalBudget = amount;
+  _currentBudget.total_budget = amount;
+  _currentBudget.totalCash = cashAmount;
+  _currentBudget.total_cash = cashAmount;
   _currentBudget.user_id = userId;
   _currentBudget.userId = userId;
   persistHotCache();
@@ -260,13 +268,16 @@ async function updateTotalBudget(amount) {
       body: JSON.stringify({
         month: _currentBudget.month || getCurrentMonth(),
         amount: amount,
+        total_budget: amount,
+        total_cash: cashAmount,
         user_id: userId,
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
-      _currentBudget.totalBudget = data.totalBudget;
+      if (data.totalBudget != null) _currentBudget.totalBudget = data.totalBudget;
+      if (data.totalCash != null) _currentBudget.totalCash = data.totalCash;
       _currentBudget.user_id = userId;
       _currentBudget.userId = userId;
       persistHotCache();
