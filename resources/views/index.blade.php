@@ -111,7 +111,7 @@
         <div class="col-lg-6">
           <div class="card card-budgetku h-100 p-3">
             <h5 class="mb-3">Progress Pengeluaran Kategori</h5>
-            <div id="category-progress-container" class="overflow-auto" style="max-height: 300px;">
+            <div id="category-progress-container">
               <!-- Progress bars injected here -->
             </div>
           </div>

@@ -304,15 +304,19 @@ function renderCategoryProgress(budget) {
     if (remaining < 0) {
       const overspent = Math.abs(remaining);
       const formattedOverspent = window.formatRupiah ? window.formatRupiah(overspent) : 'Rp ' + overspent.toLocaleString('id-ID');
-      remainingHtml = `<small class="text-danger d-block mt-1">Over budget: ${formattedOverspent}</small>`;
+      remainingHtml = `<small class="text-danger d-inline-block">Over budget: ${formattedOverspent}</small>`;
     } else {
       const formattedRemaining = window.formatRupiah ? window.formatRupiah(remaining) : 'Rp ' + remaining.toLocaleString('id-ID');
-      remainingHtml = `<small class="text-muted d-block mt-1">Sisa: ${formattedRemaining}</small>`;
+      remainingHtml = `<small class="text-muted d-inline-block">Sisa: ${formattedRemaining}</small>`;
     }
 
-    // Kalkulasi dan render rincian sub-kategori jika tersedia
+    // Kalkulasi dan render rincian sub-kategori dengan fitur Progressive Disclosure (Bootstrap Collapse)
+    let toggleBtnHtml = '';
     let subcategoriesHtml = '';
     if (Array.isArray(category.subcategories) && category.subcategories.length > 0) {
+      const collapseId = `collapse-subcat-${category.id}`;
+      toggleBtnHtml = `<a data-bs-toggle="collapse" href="#${collapseId}" role="button" aria-expanded="false" aria-controls="${collapseId}" class="small text-decoration-none text-muted ms-2 btn-toggle-subcat"><i class="bi bi-chevron-down me-1"></i>Lihat Rincian</a>`;
+
       const subItems = category.subcategories.map(subcat => {
         const subcatBudget = Number(subcat.budget != null ? subcat.budget : (subcat.budget_amount != null ? subcat.budget_amount : 0));
         
@@ -346,7 +350,13 @@ function renderCategoryProgress(budget) {
         }
       }).join('');
 
-      subcategoriesHtml = `<ul class="list-unstyled ms-3 mt-2 mb-2 small text-secondary">${subItems}</ul>`;
+      subcategoriesHtml = `
+        <div class="collapse mt-2" id="${collapseId}">
+          <ul class="list-unstyled ms-3 mt-1 mb-1 small text-secondary">
+            ${subItems}
+          </ul>
+        </div>
+      `;
     }
 
     const div = document.createElement('div');
@@ -359,10 +369,37 @@ function renderCategoryProgress(budget) {
       <div class="progress progress-budgetku" style="height: 10px;">
         <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${Math.min(percentage, 100)}%" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      ${remainingHtml}
+      <div class="d-flex justify-content-between align-items-center mt-1 flex-wrap">
+        <div>${remainingHtml}</div>
+        <div>${toggleBtnHtml}</div>
+      </div>
       ${subcategoriesHtml}
     `;
     container.appendChild(div);
+  });
+
+  // Pasang event listener untuk animasi icon toggle chevron (Bonus UX)
+  container.querySelectorAll('.collapse').forEach(collapseEl => {
+    collapseEl.addEventListener('show.bs.collapse', () => {
+      const toggleLink = container.querySelector(`[href="#${collapseEl.id}"]`);
+      if (toggleLink) {
+        const icon = toggleLink.querySelector('.bi');
+        if (icon) {
+          icon.classList.remove('bi-chevron-down');
+          icon.classList.add('bi-chevron-up');
+        }
+      }
+    });
+    collapseEl.addEventListener('hide.bs.collapse', () => {
+      const toggleLink = container.querySelector(`[href="#${collapseEl.id}"]`);
+      if (toggleLink) {
+        const icon = toggleLink.querySelector('.bi');
+        if (icon) {
+          icon.classList.remove('bi-chevron-up');
+          icon.classList.add('bi-chevron-down');
+        }
+      }
+    });
   });
 }
 
