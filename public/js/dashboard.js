@@ -671,13 +671,33 @@ function renderRecentTransactions(budget) {
         </li>
       `;
       
-      for (let i = 1; i <= totalPages; i++) {
-        paginationHtml += `
-          <li class="page-item ${recentCurrentPage === i ? 'active' : ''}">
-            <a class="page-link" href="#" onclick="event.preventDefault(); window.changeRecentPage(${i})">${i}</a>
-          </li>
-        `;
+      // Smart Pagination Logic (Ellipsis & Max numbers)
+      const pageRange = [];
+      if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pageRange.push(i);
+      } else if (recentCurrentPage <= 3) {
+        pageRange.push(1, 2, 3, 4, '...', totalPages);
+      } else if (recentCurrentPage >= totalPages - 2) {
+        pageRange.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pageRange.push(1, '...', recentCurrentPage - 1, recentCurrentPage, recentCurrentPage + 1, '...', totalPages);
       }
+
+      pageRange.forEach(p => {
+        if (p === '...') {
+          paginationHtml += `
+            <li class="page-item disabled">
+              <span class="page-link">…</span>
+            </li>
+          `;
+        } else {
+          paginationHtml += `
+            <li class="page-item ${recentCurrentPage === p ? 'active' : ''}">
+              <a class="page-link" href="#" onclick="event.preventDefault(); window.changeRecentPage(${p})">${p}</a>
+            </li>
+          `;
+        }
+      });
       
       paginationHtml += `
         <li class="page-item ${recentCurrentPage === totalPages ? 'disabled' : ''}">

@@ -1050,35 +1050,65 @@ function renderPagination() {
   const ul = document.getElementById('pagination-ul');
   
   if (totalPages <= 1) {
-    paginationNav.classList.add('d-none');
+    if (paginationNav) paginationNav.classList.add('d-none');
     return;
   }
   
-  paginationNav.classList.remove('d-none');
+  if (paginationNav) paginationNav.classList.remove('d-none');
+  if (!ul) return;
   ul.innerHTML = '';
   
+  let paginationHtml = '';
+
   // Prev button
-  ul.innerHTML += `
+  paginationHtml += `
     <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-      <a class="page-link" href="#" onclick="event.preventDefault(); changePage(${currentPage - 1})">Sebelumnya</a>
+      <a class="page-link" href="#" onclick="event.preventDefault(); changePage(${currentPage - 1})" aria-label="Sebelumnya">
+        <i class="bi bi-chevron-left d-inline d-sm-none"></i>
+        <span class="d-none d-sm-inline">Sebelumnya</span>
+      </a>
     </li>
   `;
   
-  // Page numbers
-  for (let i = 1; i <= totalPages; i++) {
-    ul.innerHTML += `
-      <li class="page-item ${currentPage === i ? 'active' : ''}">
-        <a class="page-link" href="#" onclick="event.preventDefault(); changePage(${i})">${i}</a>
-      </li>
-    `;
+  // Smart Pagination Logic (Ellipsis & Max numbers)
+  const pageRange = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pageRange.push(i);
+  } else if (currentPage <= 3) {
+    pageRange.push(1, 2, 3, 4, '...', totalPages);
+  } else if (currentPage >= totalPages - 2) {
+    pageRange.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+  } else {
+    pageRange.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
   }
+
+  pageRange.forEach(p => {
+    if (p === '...') {
+      paginationHtml += `
+        <li class="page-item disabled">
+          <span class="page-link">…</span>
+        </li>
+      `;
+    } else {
+      paginationHtml += `
+        <li class="page-item ${currentPage === p ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="event.preventDefault(); changePage(${p})">${p}</a>
+        </li>
+      `;
+    }
+  });
   
   // Next button
-  ul.innerHTML += `
+  paginationHtml += `
     <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-      <a class="page-link" href="#" onclick="event.preventDefault(); changePage(${currentPage + 1})">Selanjutnya</a>
+      <a class="page-link" href="#" onclick="event.preventDefault(); changePage(${currentPage + 1})" aria-label="Selanjutnya">
+        <span class="d-none d-sm-inline">Selanjutnya</span>
+        <i class="bi bi-chevron-right d-inline d-sm-none"></i>
+      </a>
     </li>
   `;
+
+  ul.innerHTML = paginationHtml;
 }
 
 function changePage(page) {

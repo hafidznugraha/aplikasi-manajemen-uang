@@ -202,8 +202,8 @@
     </div>
 
     <!-- Pagination -->
-    <nav aria-label="Page navigation" id="pagination-nav" class="d-none">
-      <ul class="pagination justify-content-center" id="pagination-ul">
+    <nav aria-label="Page navigation" id="pagination-nav" class="d-none mt-3">
+      <ul class="pagination pagination-sm flex-wrap justify-content-center" id="pagination-ul">
         <!-- Rendered via JS -->
       </ul>
     </nav>

@@ -248,10 +248,10 @@
         </div>
 
         <!-- Pagination for Recent Transactions -->
-        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top d-none" id="recent-pagination-container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 pt-2 border-top d-none" id="recent-pagination-container">
           <small class="text-muted" id="recent-pagination-info">Menampilkan 1-5 dari 10 transaksi</small>
           <nav aria-label="Navigasi Transaksi">
-            <ul class="pagination pagination-sm mb-0" id="recent-pagination-ul">
+            <ul class="pagination pagination-sm flex-wrap justify-content-end mb-0" id="recent-pagination-ul">
               <!-- Pagination links injected via JS -->
             </ul>
           </nav>
