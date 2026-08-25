@@ -95,15 +95,29 @@ function initTomSelectFilters() {
   }
 }
 
-function initTracker() {
+async function initTracker() {
   formCategory = document.getElementById('txn-category');
   formSubcategory = document.getElementById('txn-subcategory');
   filterCategory = document.getElementById('filter-category');
   editCategory = document.getElementById('edit-txn-category');
   editSubcategory = document.getElementById('edit-txn-subcategory');
 
-  document.getElementById('txn-date').value = getToday();
+  const txnDateEl = document.getElementById('txn-date');
+  if (txnDateEl && typeof getToday === 'function') {
+    txnDateEl.value = getToday();
+  }
+  
   initTomSelectFilters();
+
+  try {
+    const currentMonth = typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().toISOString().slice(0, 7));
+    if (typeof window.syncFromSupabase === 'function') {
+      await window.syncFromSupabase(currentMonth);
+    }
+  } catch (err) {
+    console.error('[Tracker] Gagal sinkronisasi data dari Supabase:', err);
+  }
+
   populateCategorySelects();
   loadTransactions();
 
@@ -114,6 +128,8 @@ function initTracker() {
     });
   }
 }
+
+window.initTracker = initTracker;
 
 function populateCategorySelects() {
   const categories = getCategories();

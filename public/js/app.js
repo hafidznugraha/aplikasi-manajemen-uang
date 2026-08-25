@@ -51,20 +51,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initStorage();
   }
 
-  // 5. Inisialisasi halaman yang aktif
+  // 5. Inisialisasi halaman yang aktif secara asynchronous
   const page = detectPage();
   switch (page) {
     case 'dashboard':
-      if (typeof initDashboard === 'function') initDashboard();
+      if (typeof initDashboard === 'function') await initDashboard();
       break;
     case 'budget':
-      if (typeof initBudget === 'function') initBudget();
+      if (typeof initBudget === 'function') await initBudget();
       break;
     case 'tracker':
-      if (typeof initTracker === 'function') initTracker();
+      if (typeof initTracker === 'function') await initTracker();
       break;
     case 'arsip':
-      if (typeof initArsip === 'function') initArsip();
+      if (typeof initArsip === 'function') await initArsip();
       break;
   }
 
@@ -76,15 +76,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 7. Selesaikan animasi loading
   hideTopLoader();
-
-  // 8. Alert jika belum ada setup budget
-  if (page === 'dashboard') {
-    const budget = getBudget();
-    if (!budget || budget.totalBudget === 0) {
-      const alertEl = document.getElementById('setup-alert');
-      if (alertEl) alertEl.classList.remove('d-none');
-    }
-  }
 });
 
 /**

@@ -233,6 +233,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   
   <!-- Shared JS Files -->
+  <script src="{{ asset('js/supabase.js') }}"></script>
   <script src="{{ asset('js/modal-alert.js') }}"></script>
   <script src="{{ asset('js/format.js') }}"></script>
   <script src="{{ asset('js/storage.js') }}"></script>

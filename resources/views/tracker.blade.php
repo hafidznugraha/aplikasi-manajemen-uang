@@ -467,6 +467,7 @@
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   
   <!-- Shared JS -->
+  <script src="{{ asset('js/supabase.js') }}"></script>
   <script src="{{ asset('js/modal-alert.js') }}"></script>
   <script src="{{ asset('js/format.js') }}"></script>
   <script src="{{ asset('js/storage.js') }}"></script>

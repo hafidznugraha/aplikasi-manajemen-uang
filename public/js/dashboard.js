@@ -1,53 +1,124 @@
+/* ============================================================
+   BudgetKu — Dashboard Module (dashboard.js)
+   Refactored for Direct Supabase Database Synchronization.
+   No localStorage reads for budget, categories, or transactions.
+   ============================================================ */
+
 let budgetChartInstance = null;
 let dailyChartInstance = null;
+let recentCurrentPage = 1;
+const recentItemsPerPage = 5;
 
-function initDashboard() {
-  const budget = getBudget();
+/**
+ * Inisialisasi Dashboard secara Asynchronous langsung dari Supabase
+ */
+async function initDashboard() {
   const setupAlert = document.getElementById('setup-alert');
   const emptyState = document.getElementById('empty-state');
   const dashboardContent = document.getElementById('dashboard-content');
 
-  if (!budget || budget.totalBudget === 0) {
-    setupAlert.classList.remove('d-none');
-    emptyState.classList.remove('d-none');
-    dashboardContent.classList.add('d-none');
-    return;
+  try {
+    const supabase = typeof window.getSupabaseClient === 'function' 
+      ? window.getSupabaseClient() 
+      : window.supabaseClient;
+
+    const user = typeof window.getActiveSupabaseUser === 'function' 
+      ? await window.getActiveSupabaseUser() 
+      : null;
+
+    const currentMonth = typeof window.getCurrentMonth === 'function' 
+      ? window.getCurrentMonth() 
+      : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
+
+    let totalBudget = 0;
+    let budgetData = null;
+
+    // 2. Query SELECT ke tabel 'budgets' berdasarkan user_id dan month saat ini
+    if (supabase && user && user.id) {
+      const { data, error } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('month', currentMonth)
+        .maybeSingle();
+
+      if (!error && data) {
+        budgetData = data;
+        totalBudget = Number(data.total_budget) || 0;
+        
+        // Update in-memory state
+        if (typeof window.getBudget === 'function') {
+          const inMem = window.getBudget();
+          inMem.totalBudget = totalBudget;
+          inMem.month = currentMonth;
+          inMem.user_id = user.id;
+        }
+      }
+    }
+
+    // Fallback ke in-memory jika direct query tidak mengembalikan data
+    if (!budgetData && typeof window.getBudget === 'function') {
+      const inMem = window.getBudget();
+      if (inMem && inMem.totalBudget > 0) {
+        totalBudget = inMem.totalBudget;
+        budgetData = inMem;
+      }
+    }
+
+    // Evaluasi apakah budget sudah diatur
+    if (!budgetData || totalBudget === 0) {
+      if (setupAlert) setupAlert.classList.remove('d-none');
+      if (emptyState) emptyState.classList.remove('d-none');
+      if (dashboardContent) dashboardContent.classList.add('d-none');
+      return;
+    }
+
+    // Jika data budget ditemukan: Sembunyikan alert & empty state, tampilkan dashboard
+    if (setupAlert) setupAlert.classList.add('d-none');
+    if (emptyState) emptyState.classList.add('d-none');
+    if (dashboardContent) dashboardContent.classList.remove('d-none');
+
+    const activeBudget = typeof window.getBudget === 'function' ? window.getBudget() : { totalBudget: totalBudget, categories: [] };
+    activeBudget.totalBudget = totalBudget;
+
+    renderSummaryCards(activeBudget);
+    renderChart(activeBudget);
+    renderCategoryProgress(activeBudget);
+    renderDailyExpenseChart(activeBudget);
+    renderRecentTransactions(activeBudget);
+  } catch (err) {
+    console.error('[Dashboard] Error saat memuat data dari Supabase:', err);
+    if (setupAlert) setupAlert.classList.remove('d-none');
   }
-
-  setupAlert.classList.add('d-none');
-  emptyState.classList.add('d-none');
-  dashboardContent.classList.remove('d-none');
-
-  renderSummaryCards(budget);
-  renderChart(budget);
-  renderCategoryProgress(budget);
-  renderDailyExpenseChart(budget);
-  renderRecentTransactions(budget);
 }
+
+window.initDashboard = initDashboard;
 
 function renderSummaryCards(budget) {
   const baselineBudget = budget.totalBudget || 0;
-  const totalIncome = typeof getTotalIncome === 'function' ? getTotalIncome() : 0;
-  const totalSpent = getTotalSpent();
+  const totalIncome = typeof window.getTotalIncome === 'function' ? window.getTotalIncome() : 0;
+  const totalSpent = typeof window.getTotalSpent === 'function' ? window.getTotalSpent() : 0;
   const effectiveBudget = baselineBudget + totalIncome;
   const remaining = effectiveBudget - totalSpent;
 
-  document.getElementById('total-budget').textContent = formatRupiah(baselineBudget);
+  const totalBudgetEl = document.getElementById('total-budget');
+  if (totalBudgetEl) totalBudgetEl.textContent = window.formatRupiah(baselineBudget);
   
   const incomeNoteEl = document.getElementById('total-budget-income-note');
   if (incomeNoteEl) {
     if (totalIncome > 0) {
-      incomeNoteEl.textContent = `+ ${formatRupiah(totalIncome)} dari pemasukan tambahan`;
+      incomeNoteEl.textContent = `+ ${window.formatRupiah(totalIncome)} dari pemasukan`;
       incomeNoteEl.classList.remove('d-none');
     } else {
       incomeNoteEl.classList.add('d-none');
     }
   }
 
-  document.getElementById('total-spent').textContent = formatRupiah(totalSpent);
+  const totalSpentEl = document.getElementById('total-spent');
+  if (totalSpentEl) totalSpentEl.textContent = window.formatRupiah(totalSpent);
   
   const remainingEl = document.getElementById('total-remaining');
-  remainingEl.textContent = formatRupiah(remaining);
+  if (remainingEl) remainingEl.textContent = window.formatRupiah(remaining);
   
   const remainingCard = document.getElementById('remaining-card');
   if (remainingCard) {
@@ -63,13 +134,12 @@ function renderChart(budget) {
   const ctx = document.getElementById('budgetChart');
   if (!ctx) return;
 
-  const categories = getCategories();
+  const categories = typeof window.getCategories === 'function' ? window.getCategories() : [];
   if (categories.length === 0) return;
 
   const labels = categories.map(c => c.name);
-  const data = categories.map(c => c.budget);
+  const data = categories.map(c => c.budget || 0);
   
-  // Custom colors for chart
   const backgroundColors = [
     '#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545',
     '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'
@@ -104,7 +174,7 @@ function renderChart(budget) {
                 label += ': ';
               }
               if (context.raw !== null) {
-                label += formatRupiah(context.raw);
+                label += window.formatRupiah(context.raw);
               }
               return label;
             }
@@ -121,11 +191,11 @@ function renderCategoryProgress(budget) {
   
   container.innerHTML = '';
   
-  const categories = getCategories();
-  const spentByCategory = getSpentByCategory();
+  const categories = typeof window.getCategories === 'function' ? window.getCategories() : [];
+  const spentByCategory = typeof window.getSpentByCategory === 'function' ? window.getSpentByCategory() : {};
 
   if (categories.length === 0) {
-    container.innerHTML = '<p class="text-muted">Belum ada kategori.</p>';
+    container.innerHTML = '<p class="text-muted small">Belum ada kategori budget.</p>';
     return;
   }
 
@@ -133,8 +203,13 @@ function renderCategoryProgress(budget) {
     const isSavings = !!(category.isSavings || category.is_savings);
     const spent = spentByCategory[category.id] || 0;
     const catBudget = category.budget || 0;
-    const percentage = calcPercentage(spent, catBudget);
-    const colorClass = getProgressColor(percentage, isSavings);
+    const percentage = typeof window.calcPercentage === 'function' 
+      ? window.calcPercentage(spent, catBudget) 
+      : (catBudget > 0 ? Math.round((spent / catBudget) * 100) : 0);
+      
+    const colorClass = typeof window.getProgressColor === 'function' 
+      ? window.getProgressColor(percentage, isSavings) 
+      : (percentage > 100 ? 'bg-danger' : 'bg-primary');
 
     const savingsBadge = isSavings
       ? '<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill small ms-1" style="font-size: 0.75rem;"><i class="bi bi-piggy-bank me-1"></i>Tabungan</span>'
@@ -145,7 +220,7 @@ function renderCategoryProgress(budget) {
     div.innerHTML = `
       <div class="d-flex justify-content-between align-items-end mb-1">
         <span class="fw-medium">${category.name} ${savingsBadge}</span>
-        <small class="text-muted">${formatRupiahShort(spent)} / ${formatRupiahShort(catBudget)}</small>
+        <small class="text-muted">${window.formatRupiahShort ? window.formatRupiahShort(spent) : window.formatRupiah(spent)} / ${window.formatRupiahShort ? window.formatRupiahShort(catBudget) : window.formatRupiah(catBudget)}</small>
       </div>
       <div class="progress progress-budgetku" style="height: 10px;">
         <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${Math.min(percentage, 100)}%" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -159,12 +234,11 @@ function renderDailyExpenseChart(budget) {
   const canvas = document.getElementById('dailyExpenseChart');
   if (!canvas) return;
 
-  const currentMonthStr = budget.month || getCurrentMonth();
+  const currentMonthStr = budget.month || (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : '2026-08');
   const [yearStr, monthStr] = currentMonthStr.split('-');
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
   
-  // Hitung jumlah hari dalam bulan ini
   const daysInMonth = new Date(year, month, 0).getDate();
   
   const labels = [];
@@ -174,8 +248,7 @@ function renderDailyExpenseChart(budget) {
     labels.push(`${d}`);
   }
   
-  const allTransactions = getTransactions();
-  // Filter HANYA transaksi pengeluaran (bukan income, bukan reallocation, bukan sistem)
+  const allTransactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
   const expenseTransactions = allTransactions.filter(txn => {
     const type = txn.type || 'expense';
     const isSystem = !!(txn.is_system || txn.isSystem);
@@ -205,33 +278,28 @@ function renderDailyExpenseChart(budget) {
     }
   });
 
-  // Hitung rata-rata per hari
   const today = new Date();
   const isCurrentCalendarMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
   const daysCountForAvg = isCurrentCalendarMonth ? Math.max(today.getDate(), 1) : daysInMonth;
   const avgSpent = Math.round(totalMonthSpent / daysCountForAvg);
 
-  // Update badge statistik
   const avgValEl = document.getElementById('daily-avg-val');
-  if (avgValEl) avgValEl.textContent = formatRupiah(avgSpent);
+  if (avgValEl) avgValEl.textContent = window.formatRupiah(avgSpent);
 
   const maxValEl = document.getElementById('daily-max-val');
   if (maxValEl) {
     if (maxSpent > 0 && maxDay) {
-      maxValEl.textContent = `Tgl ${maxDay} (${formatRupiah(maxSpent)})`;
+      maxValEl.textContent = `Tgl ${maxDay} (${window.formatRupiah(maxSpent)})`;
     } else {
       maxValEl.textContent = '-';
     }
   }
 
-  // Destroy instance sebelumnya jika ada
   if (dailyChartInstance) {
     dailyChartInstance.destroy();
   }
 
   const ctx = canvas.getContext('2d');
-  
-  // Background gradient
   const gradient = ctx.createLinearGradient(0, 0, 0, 240);
   gradient.addColorStop(0, 'rgba(26, 86, 219, 0.28)');
   gradient.addColorStop(1, 'rgba(26, 86, 219, 0.01)');
@@ -274,10 +342,10 @@ function renderDailyExpenseChart(budget) {
           cornerRadius: 8,
           callbacks: {
             title: function(items) {
-              return `Tanggal ${items[0].label} ${formatMonth(currentMonthStr)}`;
+              return `Tanggal ${items[0].label} ${window.formatMonth ? window.formatMonth(currentMonthStr) : currentMonthStr}`;
             },
             label: function(context) {
-              return ` Pengeluaran: ${formatRupiah(context.raw)}`;
+              return ` Pengeluaran: ${window.formatRupiah(context.raw)}`;
             }
           }
         }
@@ -319,9 +387,6 @@ function renderDailyExpenseChart(budget) {
   });
 }
 
-let recentCurrentPage = 1;
-const recentItemsPerPage = 5;
-
 function renderRecentTransactions(budget) {
   const tbody = document.getElementById('recent-transactions-tbody');
   const noData = document.getElementById('no-transactions');
@@ -331,7 +396,7 @@ function renderRecentTransactions(budget) {
   
   if (!tbody || !noData) return;
   
-  const transactions = getTransactions();
+  const transactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
   
   if (transactions.length === 0) {
     tbody.innerHTML = '';
@@ -342,7 +407,6 @@ function renderRecentTransactions(budget) {
   
   noData.classList.add('d-none');
   
-  // Sort desc by date
   const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
   
   const totalPages = Math.ceil(sorted.length / recentItemsPerPage);
@@ -361,20 +425,20 @@ function renderRecentTransactions(budget) {
 
     if (isIncome) {
       badgeHtml = `<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle"><i class="bi bi-arrow-down-left me-1"></i>Pemasukan</span>`;
-      amountHtml = `<span class="text-success fw-bold font-monospace">+${formatRupiah(txn.amount)}</span>`;
+      amountHtml = `<span class="text-success fw-bold font-monospace">+${window.formatRupiah(txn.amount)}</span>`;
     } else if (isReallocation) {
       badgeHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle"><i class="bi bi-arrow-left-right me-1"></i>Realokasi</span>`;
-      amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${formatRupiah(txn.amount)}</span>`;
+      amountHtml = `<span class="text-secondary fw-semibold font-monospace">↔ ${window.formatRupiah(txn.amount)}</span>`;
     } else {
-      const category = getCategoryById(txn.categoryId);
+      const category = typeof window.getCategoryById === 'function' ? window.getCategoryById(txn.categoryId) : null;
       const catName = category ? category.name : 'Uncategorized';
       badgeHtml = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle">${catName}</span>`;
-      amountHtml = `<span class="fw-medium font-monospace text-dark">-${formatRupiah(txn.amount)}</span>`;
+      amountHtml = `<span class="fw-medium font-monospace text-dark">-${window.formatRupiah(txn.amount)}</span>`;
     }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="text-nowrap">${formatDateShort(txn.date)}</td>
+      <td class="text-nowrap">${window.formatDateShort ? window.formatDateShort(txn.date) : txn.date}</td>
       <td>${badgeHtml}</td>
       <td>${txn.description || '-'}</td>
       <td class="text-end">${amountHtml}</td>
@@ -382,7 +446,6 @@ function renderRecentTransactions(budget) {
     tbody.appendChild(tr);
   });
   
-  // Render Pagination controls
   if (paginationContainer && paginationInfo && paginationUl) {
     if (sorted.length > recentItemsPerPage) {
       paginationContainer.classList.remove('d-none');
@@ -390,7 +453,6 @@ function renderRecentTransactions(budget) {
       
       let paginationHtml = '';
       
-      // Prev Button
       paginationHtml += `
         <li class="page-item ${recentCurrentPage === 1 ? 'disabled' : ''}">
           <a class="page-link" href="#" onclick="event.preventDefault(); window.changeRecentPage(${recentCurrentPage - 1})" aria-label="Sebelumnya">
@@ -399,7 +461,6 @@ function renderRecentTransactions(budget) {
         </li>
       `;
       
-      // Page Number Buttons
       for (let i = 1; i <= totalPages; i++) {
         paginationHtml += `
           <li class="page-item ${recentCurrentPage === i ? 'active' : ''}">
@@ -408,7 +469,6 @@ function renderRecentTransactions(budget) {
         `;
       }
       
-      // Next Button
       paginationHtml += `
         <li class="page-item ${recentCurrentPage === totalPages ? 'disabled' : ''}">
           <a class="page-link" href="#" onclick="event.preventDefault(); window.changeRecentPage(${recentCurrentPage + 1})" aria-label="Selanjutnya">
@@ -425,10 +485,9 @@ function renderRecentTransactions(budget) {
 }
 
 window.changeRecentPage = function(page) {
-  const transactions = getTransactions();
+  const transactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
   const totalPages = Math.ceil(transactions.length / recentItemsPerPage);
   if (page < 1 || page > totalPages) return;
   recentCurrentPage = page;
   renderRecentTransactions();
 };
-
