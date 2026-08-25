@@ -491,8 +491,11 @@ async function addTransaction(txn, file = null) {
   txn.user_id = userId;
   txn.userId = userId;
 
+  const fundSource = txn.fund_source || txn.fundSource || 'bank';
+
   const formData = new FormData();
   formData.append('type', txn.type || 'expense');
+  formData.append('fund_source', fundSource);
   formData.append('user_id', userId);
   if (txn.is_system !== undefined) {
     formData.append('is_system', txn.is_system ? '1' : '0');
@@ -525,6 +528,8 @@ async function addTransaction(txn, file = null) {
       const newTxn = await res.json();
       newTxn.user_id = userId;
       newTxn.userId = userId;
+      newTxn.fund_source = newTxn.fund_source || fundSource;
+      newTxn.fundSource = newTxn.fundSource || fundSource;
       _currentTransactions.unshift(newTxn);
       persistHotCache();
       return newTxn;
@@ -543,6 +548,9 @@ async function updateTransaction(txnId, updates, file = null) {
   const formData = new FormData();
   formData.append('user_id', userId);
   if (updates.type) formData.append('type', updates.type);
+  if (updates.fund_source || updates.fundSource) {
+    formData.append('fund_source', updates.fund_source || updates.fundSource);
+  }
   if (updates.date) formData.append('date', updates.date);
   if (updates.categoryId !== undefined) formData.append('category_id', updates.categoryId || '');
   if (updates.subcategoryId !== undefined) formData.append('subcategory_id', updates.subcategoryId || '');
@@ -657,6 +665,64 @@ function getTotalIncome() {
     .filter(t => t.type === 'income')
     .reduce((sum, txn) => sum + txn.amount, 0);
 }
+
+function getSpentByFundSource() {
+  const transactions = getTransactions();
+  const result = { bank: 0, cash: 0 };
+  transactions.forEach((txn) => {
+    if (txn.type === 'income' || txn.type === 'reallocation') return;
+    const source = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    if (source === 'cash') {
+      result.cash += txn.amount;
+    } else {
+      result.bank += txn.amount;
+    }
+  });
+  return result;
+}
+
+function getIncomeByFundSource() {
+  const transactions = getTransactions();
+  const result = { bank: 0, cash: 0 };
+  transactions.forEach((txn) => {
+    if (txn.type !== 'income') return;
+    const source = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    if (source === 'cash') {
+      result.cash += txn.amount;
+    } else {
+      result.bank += txn.amount;
+    }
+  });
+  return result;
+}
+
+function getFundSourceBalances() {
+  const budget = getBudget();
+  const initialBank = budget.total_budget != null ? budget.total_budget : (budget.totalBudget || 0);
+  const initialCash = budget.total_cash != null ? budget.total_cash : (budget.totalCash || 0);
+
+  const spent = getSpentByFundSource();
+  const income = getIncomeByFundSource();
+
+  return {
+    bank: {
+      initial: initialBank,
+      spent: spent.bank,
+      income: income.bank,
+      remaining: (initialBank + income.bank) - spent.bank,
+    },
+    cash: {
+      initial: initialCash,
+      spent: spent.cash,
+      income: income.cash,
+      remaining: (initialCash + income.cash) - spent.cash,
+    }
+  };
+}
+
+window.getSpentByFundSource = getSpentByFundSource;
+window.getIncomeByFundSource = getIncomeByFundSource;
+window.getFundSourceBalances = getFundSourceBalances;
 
 /* ---------- Archive ---------- */
 

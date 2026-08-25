@@ -116,6 +116,8 @@ class ApiController extends Controller
                     'subcategoryId' => $t->subcategory_id ? (string) $t->subcategory_id : null,
                     'description' => $t->description,
                     'amount' => (int) $t->amount,
+                    'fund_source' => $t->fund_source ?? 'bank',
+                    'fundSource' => $t->fund_source ?? 'bank',
                     'hasReceipt' => !empty($t->receipt_url),
                     'receiptUrl' => $t->receipt_url,
                     'createdAt' => $t->created_at->toISOString(),
@@ -494,6 +496,7 @@ class ApiController extends Controller
             'user_id' => $userId,
             'budget_id' => $budget->id,
             'type' => $type,
+            'fund_source' => $request->input('fund_source', $request->input('fundSource', 'bank')),
             'is_system' => $isSystem,
             'category_id' => in_array($type, ['income', 'reallocation']) ? ($request->input('category_id') ?: null) : $request->input('category_id'),
             'subcategory_id' => $request->input('subcategory_id'),
@@ -506,6 +509,8 @@ class ApiController extends Controller
         return response()->json([
             'id' => (string) $transaction->id,
             'type' => $transaction->type ?? 'expense',
+            'fund_source' => $transaction->fund_source ?? 'bank',
+            'fundSource' => $transaction->fund_source ?? 'bank',
             'is_system' => (bool) $transaction->is_system,
             'isSystem' => (bool) $transaction->is_system,
             'date' => $transaction->date->format('Y-m-d'),
@@ -533,6 +538,7 @@ class ApiController extends Controller
         $request->validate([
             'date' => 'sometimes|required|date',
             'type' => 'nullable|string|in:expense,income,reallocation',
+            'fund_source' => 'nullable|string|in:bank,cash',
             'category_id' => 'nullable',
             'subcategory_id' => 'nullable|exists:subcategories,id',
             'description' => 'sometimes|required|string|max:255',
@@ -542,6 +548,8 @@ class ApiController extends Controller
         ]);
 
         if ($request->has('type')) $transaction->type = $request->input('type');
+        if ($request->has('fund_source')) $transaction->fund_source = $request->input('fund_source');
+        if ($request->has('fundSource')) $transaction->fund_source = $request->input('fundSource');
         if ($request->has('date')) $transaction->date = $request->input('date');
         if ($request->has('category_id')) $transaction->category_id = $request->input('category_id') ?: null;
         if ($request->has('subcategory_id')) $transaction->subcategory_id = $request->input('subcategory_id') ?: null;
@@ -565,6 +573,8 @@ class ApiController extends Controller
         return response()->json([
             'id' => (string) $transaction->id,
             'type' => $transaction->type ?? 'expense',
+            'fund_source' => $transaction->fund_source ?? 'bank',
+            'fundSource' => $transaction->fund_source ?? 'bank',
             'is_system' => (bool) $transaction->is_system,
             'isSystem' => (bool) $transaction->is_system,
             'date' => $transaction->date->format('Y-m-d'),

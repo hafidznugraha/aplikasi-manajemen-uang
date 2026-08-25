@@ -238,18 +238,30 @@
               </div>
             </div>
 
+            <!-- Baris 1: Tanggal & Sumber Dana -->
             <div class="row g-3 mb-3">
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <label for="txn-date" class="form-label fw-medium small">Tanggal</label>
                 <input type="date" class="form-control" id="txn-date" required>
               </div>
-              <div class="col-md-4" id="category-col">
+              <div class="col-md-6">
+                <label for="txn-fund-source" class="form-label fw-medium small">Sumber Dana</label>
+                <select id="txn-fund-source" class="form-select" required>
+                  <option value="bank" selected>Saldo Bank / E-Wallet</option>
+                  <option value="cash">Uang Tunai</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Baris 2: Kategori & Sub-Kategori (Hanya Pengeluaran) -->
+            <div class="row g-3 mb-3" id="category-row">
+              <div class="col-md-6" id="category-col">
                 <label for="txn-category" class="form-label fw-medium small" id="txn-category-label">Kategori</label>
                 <select id="txn-category" required onchange="handleCategoryChange()">
                   <option value="" disabled selected>Pilih Kategori</option>
                 </select>
               </div>
-              <div class="col-md-4" id="subcategory-col">
+              <div class="col-md-6" id="subcategory-col">
                 <label for="txn-subcategory" class="form-label fw-medium small">Sub-Kategori</label>
                 <select id="txn-subcategory">
                   <option value="">Tidak ada sub-kategori</option>
@@ -257,6 +269,7 @@
               </div>
             </div>
 
+            <!-- Baris 3: Keterangan & Nominal -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <label for="txn-desc" class="form-label fw-medium small" id="txn-desc-label">Keterangan</label>
@@ -354,34 +367,48 @@
           </div>
         </div>
 
+        <!-- Baris 1: Tanggal & Sumber Dana -->
         <div class="row g-3 mb-3">
           <div class="col-md-6">
             <label for="edit-txn-date" class="form-label">Tanggal</label>
             <input type="date" class="form-control" id="edit-txn-date" required>
           </div>
+          <div class="col-md-6">
+            <label for="edit-txn-fund-source" class="form-label">Sumber Dana</label>
+            <select id="edit-txn-fund-source" class="form-select" required>
+              <option value="bank" selected>Saldo Bank / E-Wallet</option>
+              <option value="cash">Uang Tunai</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Baris 2: Kategori & Sub-Kategori -->
+        <div class="row g-3 mb-3" id="edit-category-row">
           <div class="col-md-6" id="edit-category-col">
             <label for="edit-txn-category" class="form-label" id="edit-txn-category-label">Kategori</label>
             <select id="edit-txn-category" required onchange="handleEditCategoryChange()">
             </select>
           </div>
-        </div>
-        <div class="row g-3 mb-3" id="edit-subcategory-row">
-          <div class="col-md-6">
+          <div class="col-md-6" id="edit-subcategory-col">
             <label for="edit-txn-subcategory" class="form-label">Sub-Kategori</label>
             <select id="edit-txn-subcategory">
             </select>
+          </div>
+        </div>
+
+        <!-- Baris 3: Keterangan & Nominal -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label for="edit-txn-desc" class="form-label">Keterangan</label>
+            <input type="text" class="form-control" id="edit-txn-desc" required>
           </div>
           <div class="col-md-6">
             <label for="edit-txn-amount" class="form-label">Nominal</label>
             <div class="input-group">
               <span class="input-group-text">Rp</span>
-              <input type="text" class="form-control" id="edit-txn-amount" required oninput="formatInputRupiah(this)">
+              <input type="text" class="form-control fw-bold" id="edit-txn-amount" required oninput="formatInputRupiah(this)">
             </div>
           </div>
-        </div>
-        <div class="mb-3">
-          <label for="edit-txn-desc" class="form-label">Keterangan</label>
-          <input type="text" class="form-control" id="edit-txn-desc" required>
         </div>
         <!-- Konfirmasi Tabungan Dinamis (Edit) -->
         <div class="mb-3 d-none p-3 bg-success-subtle rounded border border-success-subtle" id="edit-savings-confirmation-container">

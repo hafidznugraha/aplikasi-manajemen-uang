@@ -189,6 +189,7 @@ function populateCategorySelects() {
 
 function handleTypeChange() {
   const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
+  const catRow = document.getElementById('category-row');
   const catCol = document.getElementById('category-col');
   const subcatCol = document.getElementById('subcategory-col');
   const catSelect = document.getElementById('txn-category');
@@ -197,6 +198,7 @@ function handleTypeChange() {
   const savingsContainer = document.getElementById('savings-confirmation-container');
 
   if (isIncome) {
+    if (catRow) catRow.classList.add('d-none');
     if (catCol) catCol.classList.add('d-none');
     if (subcatCol) subcatCol.classList.add('d-none');
     if (tomSelectFormCategory) tomSelectFormCategory.setValue('', true);
@@ -209,6 +211,7 @@ function handleTypeChange() {
     if (descInput) descInput.placeholder = 'Contoh: Gaji bulanan, Bonus proyek, Freelance';
     if (savingsContainer) savingsContainer.classList.add('d-none');
   } else {
+    if (catRow) catRow.classList.remove('d-none');
     if (catCol) catCol.classList.remove('d-none');
     if (subcatCol) subcatCol.classList.remove('d-none');
     if (catSelect) catSelect.required = true;
@@ -220,17 +223,16 @@ function handleTypeChange() {
 
 function handleEditTypeChange() {
   const isIncome = document.getElementById('edit-type-income') ? document.getElementById('edit-type-income').checked : false;
+  const catRow = document.getElementById('edit-category-row');
   const catCol = document.getElementById('edit-category-col');
-  const subcatRow = document.getElementById('edit-subcategory-row');
+  const subcatCol = document.getElementById('edit-subcategory-col');
   const catSelect = document.getElementById('edit-txn-category');
   const savingsContainer = document.getElementById('edit-savings-confirmation-container');
 
   if (isIncome) {
+    if (catRow) catRow.classList.add('d-none');
     if (catCol) catCol.classList.add('d-none');
-    if (subcatRow) {
-      const subcatCol = subcatRow.querySelector('.col-md-6:first-child');
-      if (subcatCol) subcatCol.classList.add('d-none');
-    }
+    if (subcatCol) subcatCol.classList.add('d-none');
     if (tomSelectEditCategory) tomSelectEditCategory.setValue('', true);
     if (tomSelectEditSubcategory) tomSelectEditSubcategory.setValue('', true);
     if (catSelect) {
@@ -239,11 +241,9 @@ function handleEditTypeChange() {
     }
     if (savingsContainer) savingsContainer.classList.add('d-none');
   } else {
+    if (catRow) catRow.classList.remove('d-none');
     if (catCol) catCol.classList.remove('d-none');
-    if (subcatRow) {
-      const subcatCol = subcatRow.querySelector('.col-md-6:first-child');
-      if (subcatCol) subcatCol.classList.remove('d-none');
-    }
+    if (subcatCol) subcatCol.classList.remove('d-none');
     if (catSelect) catSelect.required = true;
     handleEditCategoryChange();
   }
@@ -419,6 +419,10 @@ function resetForm() {
     savingsConfirm.checked = false;
     savingsConfirm.required = false;
   }
+
+  const fundSourceEl = document.getElementById('txn-fund-source');
+  if (fundSourceEl) fundSourceEl.value = 'bank';
+
   removeFile();
 }
 
@@ -426,6 +430,8 @@ async function submitTransaction() {
   const submitBtn = document.querySelector('#add-transaction-form button[type="submit"]');
   const isIncome = document.getElementById('type-income') ? document.getElementById('type-income').checked : false;
   const type = isIncome ? 'income' : 'expense';
+  const fundSourceEl = document.getElementById('txn-fund-source');
+  const fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
   const date = document.getElementById('txn-date').value;
   const categoryId = isIncome ? null : (tomSelectFormCategory ? tomSelectFormCategory.getValue() : (formCategory ? formCategory.value : null));
   const subcategoryId = isIncome ? null : ((tomSelectFormSubcategory ? tomSelectFormSubcategory.getValue() : (formSubcategory ? formSubcategory.value : null)) || null);
@@ -479,6 +485,8 @@ async function submitTransaction() {
       openOverbudgetModal({
         txnData: {
           type,
+          fund_source: fundSource,
+          fundSource: fundSource,
           date,
           categoryId,
           subcategoryId,
@@ -504,6 +512,8 @@ async function submitTransaction() {
   const txnData = {
     user_id: (typeof getActiveUserId === 'function' ? getActiveUserId() : null),
     type,
+    fund_source: fundSource,
+    fundSource: fundSource,
     date,
     categoryId,
     subcategoryId,
@@ -928,12 +938,22 @@ async function renderTable() {
         receiptHtml = `<img src="${receiptUrl}" alt="Struk" class="rounded cursor-pointer" style="width: 40px; height: 40px; object-fit: cover;" onclick="showReceiptPreview('${txn.id}', '${receiptUrl}')">`;
       }
     }
+
+    const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    const fundBadge = fundSource === 'cash'
+      ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-cash me-1"></i>Tunai</span>`
+      : `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small ms-1" style="font-size: 0.72rem;"><i class="bi bi-bank me-1"></i>Bank</span>`;
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="ps-4 text-nowrap">${formatDateShort(txn.date)}</td>
       <td>${categoryHtml}</td>
-      <td>${txn.description}</td>
+      <td>
+        <div class="d-flex align-items-center flex-wrap gap-1">
+          <span>${txn.description}</span>
+          ${fundBadge}
+        </div>
+      </td>
       <td class="text-end">${amountHtml}</td>
       <td class="text-center">${receiptHtml}</td>
       <td class="text-end pe-4">
@@ -1027,6 +1047,11 @@ function openEditDialog(txnId) {
 
   document.getElementById('edit-txn-date').value = txn.date;
   document.getElementById('edit-txn-desc').value = txn.description;
+
+  const editFundSourceEl = document.getElementById('edit-txn-fund-source');
+  if (editFundSourceEl) {
+    editFundSourceEl.value = txn.fund_source || txn.fundSource || 'bank';
+  }
   
   const amountInput = document.getElementById('edit-txn-amount');
   amountInput.value = txn.amount;
@@ -1061,6 +1086,8 @@ async function submitEditTransaction() {
   const isIncome = document.getElementById('edit-type-income') ? document.getElementById('edit-type-income').checked : false;
   const type = isIncome ? 'income' : 'expense';
   const id = document.getElementById('edit-txn-id').value;
+  const fundSourceEl = document.getElementById('edit-txn-fund-source');
+  const fundSource = fundSourceEl ? fundSourceEl.value : 'bank';
   const date = document.getElementById('edit-txn-date').value;
   const categoryId = isIncome ? null : (tomSelectEditCategory ? tomSelectEditCategory.getValue() : (editCategory ? editCategory.value : null));
   const subcategoryId = isIncome ? null : ((tomSelectEditSubcategory ? tomSelectEditSubcategory.getValue() : (editSubcategory ? editSubcategory.value : null)) || null);
@@ -1097,6 +1124,8 @@ async function submitEditTransaction() {
   try {
     await updateTransaction(id, {
       type,
+      fund_source: fundSource,
+      fundSource: fundSource,
       date,
       categoryId,
       subcategoryId,
