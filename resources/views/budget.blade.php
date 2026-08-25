@@ -146,6 +146,25 @@
           </button>
         </div>
 
+        <!-- Banner Salin Kategori dari Bulan Lalu -->
+        <div id="banner-copy-categories" class="alert alert-info border-info-subtle rounded-3 p-3 mb-3 d-none">
+          <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-stars text-info fs-4"></i>
+              <div>
+                <h6 class="fw-bold mb-0 text-dark" id="banner-copy-title">Bulan Baru Telah Tiba!</h6>
+                <p class="small text-muted mb-0" id="banner-copy-desc">Anda belum memiliki kategori untuk bulan ini. Ingin menyalin daftar kategori dari bulan lalu?</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="dismissCopyBanner()">Nanti Saja</button>
+              <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 d-flex align-items-center gap-1" id="btn-copy-prev-categories" onclick="handleCopyPreviousCategories()">
+                <i class="bi bi-copy me-1"></i> Salin Kategori
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="categories-container" class="mt-3">
           <!-- Categories rendered via JS -->
         </div>

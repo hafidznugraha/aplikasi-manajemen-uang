@@ -40,6 +40,7 @@ Route::prefix('api')->group(function () {
     Route::post('/budget', [ApiController::class, 'updateTotalBudget'])->name('api.budget.update');
 
     Route::post('/categories', [ApiController::class, 'addCategory'])->name('api.categories.store');
+    Route::post('/categories/copy-previous', [ApiController::class, 'copyPreviousCategories'])->name('api.categories.copy_previous');
     Route::put('/categories/{id}', [ApiController::class, 'updateCategory'])->name('api.categories.update');
     Route::delete('/categories/{id}', [ApiController::class, 'deleteCategory'])->name('api.categories.destroy');
 

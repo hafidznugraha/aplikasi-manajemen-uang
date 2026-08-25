@@ -1,8 +1,13 @@
 /* ============================================================
    BudgetKu — Setup Budget Module (budget.js)
-   Refactored for Multi-Source Fund Allocation (Bank & Tunai).
-   Direct Supabase Database Synchronization.
+   Refactored for Multi-Source Fund Allocation (Bank & Tunai),
+   Month Rollover (Pergantian Bulan Otomatis), and Direct Supabase Database Synchronization.
    ============================================================ */
+
+let currentMonthContext = (typeof window.getCurrentMonth === 'function' 
+  ? window.getCurrentMonth() 
+  : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')));
+window.currentMonthContext = currentMonthContext;
 
 let totalBudgetInput;
 let totalCashInput;
@@ -76,9 +81,30 @@ async function getActiveSupabaseUser() {
 }
 
 /**
+ * Update label tampilan bulan aktif di pojok kanan atas UI
+ */
+function updateNavbarMonthDisplay() {
+  currentMonthContext = (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')));
+  window.currentMonthContext = currentMonthContext;
+
+  const monthEl = document.getElementById('current-month-display');
+  const monthText = document.getElementById('month-text');
+  const formatted = typeof window.formatMonth === 'function' ? window.formatMonth(currentMonthContext) : currentMonthContext;
+
+  if (monthText) {
+    monthText.textContent = formatted;
+  } else if (monthEl) {
+    monthEl.innerHTML = `<i class="bi bi-calendar3"></i> <span>${formatted}</span>`;
+  }
+}
+
+/**
  * Inisialisasi Halaman Budget
  */
 window.initBudget = async function() {
+  currentMonthContext = (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')));
+  window.currentMonthContext = currentMonthContext;
+
   totalBudgetInput = document.getElementById('total-budget-input') || document.getElementById('total_budget');
   totalCashInput = document.getElementById('total-cash-input') || document.getElementById('total_cash');
   categoriesContainer = document.getElementById('categories-container');
@@ -91,11 +117,12 @@ window.initBudget = async function() {
   categoryForm = document.getElementById('category-form');
   deleteConfirmModal = document.getElementById('delete-confirm-modal');
 
+  updateNavbarMonthDisplay();
   setupEventListeners();
   renderCategories();
   updateAllocationSummary();
 
-  // Muat data total budget & cash langsung dari Supabase saat halaman dimuat
+  // Muat data total budget, cash, dan kategori untuk bulan aktif (month = currentMonthContext)
   await loadBudgetDataFromSupabase();
 };
 
@@ -186,47 +213,37 @@ function setupEventListeners() {
 }
 
 /**
- * 2. Integrasi Read Data (Supabase):
- * Ambil session user aktif, query SELECT ke tabel 'budgets' berdasarkan user_id dan month,
- * lalu tampilkan total_budget (Bank) dan total_cash (Tunai) ke dalam input form masing-masing.
+ * 2. Integrasi Read Data (Supabase & Month Filter):
+ * Filter SELECT ke tabel 'budgets' berdasarkan user_id DAN month = currentMonth.
+ * Jika bulan baru (kosong), inisialisasi state bersih: input 0, kategori kosong, progress 0.
  */
 async function loadBudgetDataFromSupabase() {
+  updateNavbarMonthDisplay();
+  const targetMonth = currentMonthContext;
+
   const client = getSupabaseClient();
-  if (!client) {
-    console.warn('[Supabase] Client tidak tersedia untuk membaca data.');
+  const user = await getActiveSupabaseUser();
+  const userId = user && user.id ? user.id : (typeof window.getActiveUserId === 'function' ? window.getActiveUserId() : null);
+
+  if (!client || !userId) {
+    console.warn('[Supabase] Client atau User tidak tersedia, memuat dari fallback storage.');
     renderTotalBudgetFromMemory();
+    await checkPreviousMonthCategories();
     return;
   }
 
   try {
-    const user = await getActiveSupabaseUser();
-    if (!user || !user.id) {
-      console.warn('[Supabase] Sesi pengguna aktif tidak ditemukan.');
-      renderTotalBudgetFromMemory();
-      return;
-    }
-
-    const currentMonth = typeof window.getCurrentMonth === 'function'
-      ? window.getCurrentMonth()
-      : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
-
-    // Query SELECT ke tabel budgets berdasarkan user_id dan month
+    // Query SELECT ke tabel budgets berdasarkan user_id dan month = currentMonth
     const { data, error } = await client
       .from('budgets')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('month', currentMonth)
+      .select('*, categories(*, subcategories(*))')
+      .eq('user_id', userId)
+      .eq('month', targetMonth)
       .maybeSingle();
 
     if (error) {
-      console.error('[Supabase] Gagal membaca data budget:', error);
-      if (typeof window.showAppModal === 'function') {
-        window.showAppModal({
-          title: 'Gagal Memuat Data',
-          message: `Terjadi kendala saat membaca data budget: ${error.message}`,
-          type: 'danger'
-        });
-      }
+      console.error('[Supabase] Gagal membaca data budget bulan ini:', error);
+      renderTotalBudgetFromMemory();
       return;
     }
 
@@ -252,17 +269,61 @@ async function loadBudgetDataFromSupabase() {
         inMemory.total_budget = bankAmount;
         inMemory.totalCash = cashAmount;
         inMemory.total_cash = cashAmount;
-        inMemory.month = currentMonth;
-        inMemory.user_id = user.id;
+        inMemory.month = targetMonth;
+        inMemory.user_id = userId;
+        inMemory.userId = userId;
+
+        if (Array.isArray(data.categories)) {
+          inMemory.categories = data.categories.map(c => ({
+            id: String(c.id),
+            name: c.name,
+            budget: Number(c.budget_amount) || 0,
+            isSavings: !!c.is_savings,
+            is_savings: !!c.is_savings,
+            subcategories: Array.isArray(c.subcategories) ? c.subcategories.map(s => ({
+              id: String(s.id),
+              name: s.name,
+              budget: Number(s.budget_amount) || 0,
+            })) : []
+          }));
+        }
+      }
+
+      renderCategories();
+      updateAllocationSummary();
+
+      const currentCats = typeof window.getCategories === 'function' ? window.getCategories() : [];
+      if (currentCats.length === 0) {
+        await checkPreviousMonthCategories();
+      } else {
+        dismissCopyBanner();
       }
     } else {
+      // Data bulan baru belum ada di database -> Kondisi Bersih / Kosong
       if (totalBudgetInput) totalBudgetInput.value = '';
       if (totalCashInput) totalCashInput.value = '';
-    }
 
-    updateAllocationSummary();
+      if (typeof window.getBudget === 'function') {
+        const inMemory = window.getBudget();
+        inMemory.totalBudget = 0;
+        inMemory.total_budget = 0;
+        inMemory.totalCash = 0;
+        inMemory.total_cash = 0;
+        inMemory.categories = [];
+        inMemory.month = targetMonth;
+        inMemory.user_id = userId;
+        inMemory.userId = userId;
+      }
+
+      renderCategories();
+      updateAllocationSummary();
+
+      // Periksa apakah ada kategori dari bulan sebelumnya untuk ditawarkan disalin
+      await checkPreviousMonthCategories();
+    }
   } catch (err) {
     console.error('[Supabase] Error saat menjalankan query select budget:', err);
+    renderTotalBudgetFromMemory();
   }
 }
 
@@ -899,3 +960,128 @@ async function confirmDeleteCategory() {
     currentDeleteId = null;
   }
 }
+
+/**
+ * Cek apakah ada kategori dari bulan sebelumnya untuk ditawarkan disalin
+ */
+async function checkPreviousMonthCategories() {
+  const banner = document.getElementById('banner-copy-categories');
+  if (!banner) return;
+
+  const currentCategories = typeof window.getCategories === 'function' ? window.getCategories() : [];
+  if (currentCategories.length > 0) {
+    banner.classList.add('d-none');
+    return;
+  }
+
+  try {
+    const user = await getActiveSupabaseUser();
+    const userId = user && user.id ? user.id : (typeof window.getActiveUserId === 'function' ? window.getActiveUserId() : null);
+    const client = getSupabaseClient();
+    let hasPrevious = false;
+    let prevMonthLabel = '';
+
+    if (client && userId) {
+      // Query ke database Supabase untuk mengecek kategori bulan sebelum currentMonthContext
+      const { data, error } = await client
+        .from('budgets')
+        .select('month, categories(id)')
+        .eq('user_id', userId)
+        .lt('month', currentMonthContext)
+        .order('month', { ascending: false })
+        .limit(1);
+
+      if (!error && data && data.length > 0 && Array.isArray(data[0].categories) && data[0].categories.length > 0) {
+        hasPrevious = true;
+        prevMonthLabel = typeof window.formatMonth === 'function' ? window.formatMonth(data[0].month) : data[0].month;
+      }
+    }
+
+    if (!hasPrevious) {
+      // Fallback cek melalui API
+      const prevMonth = typeof window.getPreviousMonth === 'function' ? window.getPreviousMonth(currentMonthContext) : '';
+      if (prevMonth && userId) {
+        const res = await fetch(`/api/sync?month=${prevMonth}&user_id=${encodeURIComponent(userId)}`);
+        if (res.ok) {
+          const syncData = await res.json();
+          if (syncData.budget && Array.isArray(syncData.budget.categories) && syncData.budget.categories.length > 0) {
+            hasPrevious = true;
+            prevMonthLabel = typeof window.formatMonth === 'function' ? window.formatMonth(prevMonth) : prevMonth;
+          }
+        }
+      }
+    }
+
+    if (hasPrevious) {
+      const curMonthLabel = typeof window.formatMonth === 'function' ? window.formatMonth(currentMonthContext) : currentMonthContext;
+      const titleEl = document.getElementById('banner-copy-title');
+      const descEl = document.getElementById('banner-copy-desc');
+      if (titleEl) titleEl.textContent = `Bulan Baru (${curMonthLabel}) Telah Tiba!`;
+      if (descEl) descEl.textContent = `Anda belum memiliki kategori untuk bulan ini. Ingin menyalin daftar kategori dari bulan ${prevMonthLabel}?`;
+      banner.classList.remove('d-none');
+    } else {
+      banner.classList.add('d-none');
+    }
+  } catch (err) {
+    console.warn('Gagal memeriksa kategori bulan sebelumnya:', err);
+    banner.classList.add('d-none');
+  }
+}
+
+function dismissCopyBanner() {
+  const banner = document.getElementById('banner-copy-categories');
+  if (banner) banner.classList.add('d-none');
+}
+
+window.dismissCopyBanner = dismissCopyBanner;
+window.checkPreviousMonthCategories = checkPreviousMonthCategories;
+
+/**
+ * Handle tombol Salin Kategori dari Bulan Lalu
+ */
+async function handleCopyPreviousCategories() {
+  const btn = document.getElementById('btn-copy-prev-categories');
+  const banner = document.getElementById('banner-copy-categories');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyalin...';
+  }
+
+  try {
+    const result = typeof window.copyCategoriesFromPreviousMonth === 'function'
+      ? await window.copyCategoriesFromPreviousMonth(currentMonthContext)
+      : null;
+
+    if (result && result.success) {
+      if (banner) banner.classList.add('d-none');
+      
+      // Sinkronisasi data ulang agar kategori terbaru ter-render
+      if (typeof window.syncFromSupabase === 'function') {
+        await window.syncFromSupabase(currentMonthContext);
+      }
+      renderCategories();
+      updateAllocationSummary();
+
+      if (typeof window.showAppModal === 'function') {
+        window.showAppModal({
+          title: 'Kategori Berhasil Disalin',
+          message: `Berhasil menyalin <strong>${result.categories ? result.categories.length : ''} kategori</strong> dari bulan sebelumnya (${typeof window.formatMonth === 'function' ? window.formatMonth(result.source_month) : result.source_month}).`,
+          type: 'success'
+        });
+      }
+    } else {
+      alert(result && result.message ? result.message : 'Tidak ada kategori bulan lalu yang dapat disalin.');
+    }
+  } catch (err) {
+    console.error('Error copy previous categories:', err);
+    alert('Terjadi kendala saat menyalin kategori.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-copy me-1"></i> Salin Kategori';
+    }
+  }
+}
+
+window.handleCopyPreviousCategories = handleCopyPreviousCategories;

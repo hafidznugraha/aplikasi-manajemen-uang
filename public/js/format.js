@@ -115,6 +115,24 @@ function getCurrentMonth() {
 }
 
 /**
+ * Dapatkan bulan sebelumnya dari format "YYYY-MM".
+ * @param {string} [monthStr] - Format "YYYY-MM" (default: bulan saat ini)
+ * @returns {string} Format "YYYY-MM" bulan sebelumnya
+ */
+function getPreviousMonth(monthStr) {
+  const target = monthStr || getCurrentMonth();
+  const [yearStr, monthNumStr] = target.split('-');
+  const y = parseInt(yearStr, 10);
+  const m = parseInt(monthNumStr, 10);
+  const prevDate = new Date(y, m - 2, 1);
+  const prevY = prevDate.getFullYear();
+  const prevM = String(prevDate.getMonth() + 1).padStart(2, '0');
+  return `${prevY}-${prevM}`;
+}
+
+window.getPreviousMonth = getPreviousMonth;
+
+/**
  * Dapatkan tanggal hari ini dalam format "YYYY-MM-DD".
  * @returns {string}
  */

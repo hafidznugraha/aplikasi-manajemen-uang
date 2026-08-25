@@ -400,6 +400,97 @@ class ApiController extends Controller
     }
 
     /**
+     * Salin kategori & subkategori dari bulan sebelumnya ke bulan target
+     */
+    public function copyPreviousCategories(Request $request): JsonResponse
+    {
+        $targetMonth = $request->input('month', now()->format('Y-m'));
+        $userId = $this->getUserIdFromRequest($request);
+
+        $targetMatch = ['month' => $targetMonth];
+        if ($userId !== null) {
+            $targetMatch['user_id'] = $userId;
+        }
+
+        $targetBudget = Budget::firstOrCreate(
+            $targetMatch,
+            [
+                'total_budget' => 0,
+                'total_cash' => 0,
+            ]
+        );
+
+        // Cari budget bulan sebelumnya milik user yang memiliki kategori
+        $prevBudgetQuery = Budget::with(['categories.subcategories'])
+            ->where('month', '<', $targetMonth)
+            ->whereHas('categories')
+            ->orderBy('month', 'desc');
+
+        if ($userId !== null) {
+            $prevBudgetQuery->where('user_id', $userId);
+        }
+
+        $prevBudget = $prevBudgetQuery->first();
+
+        if (!$prevBudget || $prevBudget->categories->isEmpty()) {
+            return response()->json([
+                'message' => 'Tidak ditemukan data kategori dari bulan sebelumnya untuk disalin.',
+                'categories' => [],
+            ], 404);
+        }
+
+        $newCategories = [];
+
+        foreach ($prevBudget->categories as $oldCat) {
+            // Hindari duplikasi jika kategori dengan nama sama sudah ada di target
+            $existing = Category::where('budget_id', $targetBudget->id)
+                ->where('name', $oldCat->name)
+                ->first();
+
+            if ($existing) {
+                continue;
+            }
+
+            $newCat = Category::create([
+                'budget_id' => $targetBudget->id,
+                'name' => $oldCat->name,
+                'budget_amount' => (int) $oldCat->budget_amount,
+                'is_savings' => (bool) $oldCat->is_savings,
+            ]);
+
+            $subcats = [];
+            foreach ($oldCat->subcategories as $oldSub) {
+                $newSub = Subcategory::create([
+                    'category_id' => $newCat->id,
+                    'name' => $oldSub->name,
+                    'budget_amount' => (int) $oldSub->budget_amount,
+                ]);
+                $subcats[] = [
+                    'id' => (string) $newSub->id,
+                    'name' => $newSub->name,
+                    'budget' => (int) $newSub->budget_amount,
+                ];
+            }
+
+            $newCategories[] = [
+                'id' => (string) $newCat->id,
+                'name' => $newCat->name,
+                'budget' => (int) $newCat->budget_amount,
+                'isSavings' => (bool) $newCat->is_savings,
+                'is_savings' => (bool) $newCat->is_savings,
+                'subcategories' => $subcats,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berhasil menyalin kategori dari bulan ' . $prevBudget->month,
+            'source_month' => $prevBudget->month,
+            'categories' => $newCategories,
+        ], 201);
+    }
+
+    /**
      * Ambil seluruh transaksi bulan berjalan dari Supabase
      */
     public function getTransactions(Request $request): JsonResponse

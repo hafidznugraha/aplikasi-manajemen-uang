@@ -327,6 +327,47 @@ async function addCategory(name, budgetAmount, subcategories = [], isSavings = f
 }
 
 /**
+ * Salin kategori dari bulan sebelumnya ke bulan target
+ */
+async function copyCategoriesFromPreviousMonth(targetMonth) {
+  const month = targetMonth || getCurrentMonth();
+  const userId = getActiveUserId();
+
+  try {
+    const res = await fetch('/api/categories/copy-previous', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        month: month,
+        user_id: userId,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.categories) && data.categories.length > 0) {
+        if (!_currentBudget.categories) _currentBudget.categories = [];
+        data.categories.forEach(newCat => {
+          newCat.user_id = userId;
+          newCat.userId = userId;
+          _currentBudget.categories.push(newCat);
+        });
+        persistHotCache();
+      }
+      return data;
+    }
+  } catch (err) {
+    console.error('Gagal menyalin kategori dari bulan sebelumnya:', err);
+  }
+  return null;
+}
+
+window.copyCategoriesFromPreviousMonth = copyCategoriesFromPreviousMonth;
+
+/**
  * Update kategori
  */
 async function updateCategory(categoryId, updates) {
