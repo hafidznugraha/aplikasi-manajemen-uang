@@ -168,26 +168,56 @@
         </div>
       </div>
 
-      <!-- Line Chart: Tren Pengeluaran Harian -->
-      <div class="card card-budgetku p-4 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <div>
-            <h5 class="card-title mb-1 fw-bold text-dark d-flex align-items-center gap-2">
-              <i class="bi bi-graph-up text-primary"></i> Tren Pengeluaran Harian
-            </h5>
-            <p class="text-muted small mb-0">Pantau fluktuasi dan pola pengeluaran setiap hari dalam bulan ini</p>
-          </div>
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="badge bg-light text-dark border px-3 py-2 rounded-2" id="daily-avg-badge">
-              <i class="bi bi-calculator me-1 text-muted"></i> Rata-rata: <strong id="daily-avg-val">Rp 0</strong>/hari
-            </span>
-            <span class="badge bg-light text-primary border border-primary-subtle px-3 py-2 rounded-2" id="daily-max-badge">
-              <i class="bi bi-arrow-up-right me-1"></i> Puncak: <strong id="daily-max-val">-</strong>
-            </span>
+      <!-- 2 Line Charts: Tren Pengeluaran & Tren Pemasukan Harian -->
+      <div class="row g-4 mb-4">
+        <!-- Chart 1: Tren Pengeluaran Harian -->
+        <div class="col-lg-6">
+          <div class="card card-budgetku p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h5 class="card-title mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-graph-down text-primary"></i> Tren Pengeluaran Harian
+                </h5>
+                <p class="text-muted small mb-0">Pantau fluktuasi pengeluaran setiap hari</p>
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-light text-dark border px-2 py-1 rounded-2 small" id="daily-avg-badge">
+                  <i class="bi bi-calculator me-1 text-muted"></i> Rata-rata: <strong id="daily-avg-val">Rp 0</strong>/hari
+                </span>
+                <span class="badge bg-light text-primary border border-primary-subtle px-2 py-1 rounded-2 small" id="daily-max-badge">
+                  <i class="bi bi-arrow-up-right me-1"></i> Puncak: <strong id="daily-max-val">-</strong>
+                </span>
+              </div>
+            </div>
+            <div class="chart-container" style="position: relative; height: 260px; width: 100%;">
+              <canvas id="dailyExpenseChart"></canvas>
+            </div>
           </div>
         </div>
-        <div class="chart-container" style="position: relative; height: 260px; width: 100%;">
-          <canvas id="dailyExpenseChart"></canvas>
+
+        <!-- Chart 2: Tren Pemasukan Harian -->
+        <div class="col-lg-6">
+          <div class="card card-budgetku p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h5 class="card-title mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-graph-up-arrow text-success"></i> Tren Pemasukan Harian
+                </h5>
+                <p class="text-muted small mb-0">Pantau arus pemasukan tambahan setiap hari</p>
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-light text-dark border px-2 py-1 rounded-2 small" id="daily-income-avg-badge">
+                  <i class="bi bi-calculator me-1 text-muted"></i> Rata-rata: <strong id="daily-income-avg-val">Rp 0</strong>/hari
+                </span>
+                <span class="badge bg-light text-success border border-success-subtle px-2 py-1 rounded-2 small" id="daily-income-max-badge">
+                  <i class="bi bi-arrow-up-right me-1"></i> Puncak: <strong id="daily-income-max-val">-</strong>
+                </span>
+              </div>
+            </div>
+            <div class="chart-container" style="position: relative; height: 260px; width: 100%;">
+              <canvas id="incomeChart"></canvas>
+            </div>
+          </div>
         </div>
       </div>
 

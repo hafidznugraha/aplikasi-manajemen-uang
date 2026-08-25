@@ -6,6 +6,7 @@
 
 let budgetChartInstance = null;
 let dailyChartInstance = null;
+let dailyIncomeChartInstance = null;
 let recentCurrentPage = 1;
 const recentItemsPerPage = 5;
 
@@ -93,6 +94,7 @@ async function initDashboard() {
     renderChart(activeBudget);
     renderCategoryProgress(activeBudget);
     renderDailyExpenseChart(activeBudget);
+    renderDailyIncomeChart(activeBudget);
     renderRecentTransactions(activeBudget);
   } catch (err) {
     console.error('[Dashboard] Error saat memuat data dari Supabase:', err);
@@ -401,6 +403,159 @@ function renderDailyExpenseChart(budget) {
             },
             label: function(context) {
               return ` Pengeluaran: ${window.formatRupiah(context.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          title: {
+            display: true,
+            text: 'Tanggal',
+            color: '#64748b',
+            font: { size: 11, weight: '500' }
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11 },
+            maxTicksLimit: 16,
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: '#f1f5f9',
+          },
+          ticks: {
+            color: '#64748b',
+            font: { size: 11 },
+            callback: function(value) {
+              if (value >= 1000000) return (value / 1000000) + ' Jt';
+              if (value >= 1000) return (value / 1000) + ' Rb';
+              return value;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderDailyIncomeChart(budget) {
+  const canvas = document.getElementById('incomeChart');
+  if (!canvas) return;
+
+  const currentMonthStr = budget.month || (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : '2026-08');
+  const [yearStr, monthStr] = currentMonthStr.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  
+  const daysInMonth = new Date(year, month, 0).getDate();
+  
+  const labels = [];
+  const dailyTotals = Array(daysInMonth).fill(0);
+  
+  for (let d = 1; d <= daysInMonth; d++) {
+    labels.push(`${d}`);
+  }
+  
+  const allTransactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
+  const incomeTransactions = allTransactions.filter(txn => txn.type === 'income');
+
+  let maxIncome = 0;
+  let maxDay = null;
+  let totalMonthIncome = 0;
+  
+  incomeTransactions.forEach(txn => {
+    if (!txn.date) return;
+    const parts = txn.date.split('-');
+    if (parts.length === 3 && parseInt(parts[0], 10) === year && parseInt(parts[1], 10) === month) {
+      const day = parseInt(parts[2], 10);
+      if (day >= 1 && day <= daysInMonth) {
+        dailyTotals[day - 1] += (txn.amount || 0);
+      }
+    }
+  });
+
+  dailyTotals.forEach((amt, idx) => {
+    totalMonthIncome += amt;
+    if (amt > maxIncome) {
+      maxIncome = amt;
+      maxDay = idx + 1;
+    }
+  });
+
+  const today = new Date();
+  const isCurrentCalendarMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
+  const daysCountForAvg = isCurrentCalendarMonth ? Math.max(today.getDate(), 1) : daysInMonth;
+  const avgIncome = Math.round(totalMonthIncome / daysCountForAvg);
+
+  const avgValEl = document.getElementById('daily-income-avg-val');
+  if (avgValEl) avgValEl.textContent = window.formatRupiah(avgIncome);
+
+  const maxValEl = document.getElementById('daily-income-max-val');
+  if (maxValEl) {
+    if (maxIncome > 0 && maxDay) {
+      maxValEl.textContent = `Tgl ${maxDay} (${window.formatRupiah(maxIncome)})`;
+    } else {
+      maxValEl.textContent = '-';
+    }
+  }
+
+  if (dailyIncomeChartInstance) {
+    dailyIncomeChartInstance.destroy();
+  }
+
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+  gradient.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+  gradient.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
+
+  dailyIncomeChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Pemasukan',
+        data: dailyTotals,
+        borderColor: '#10b981',
+        backgroundColor: gradient,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.35,
+        pointBackgroundColor: '#10b981',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: dailyTotals.map(v => (v > 0 ? 4.5 : 2)),
+        pointHoverRadius: 6.5,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: '#1e293b',
+          titleFont: { size: 12, weight: 'bold' },
+          bodyFont: { size: 12 },
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: {
+            title: function(items) {
+              return `Tanggal ${items[0].label} ${window.formatMonth ? window.formatMonth(currentMonthStr) : currentMonthStr}`;
+            },
+            label: function(context) {
+              return ` Pemasukan: ${window.formatRupiah(context.raw)}`;
             }
           }
         }
