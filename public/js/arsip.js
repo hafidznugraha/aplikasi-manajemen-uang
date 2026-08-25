@@ -11,13 +11,28 @@ let currentArchiveEntry = null;
  * Inisialisasi Halaman Arsip secara Asynchronous dari Supabase
  */
 async function initArsip() {
-  const btnClose = document.getElementById('btn-close-detail');
-  if (btnClose) btnClose.addEventListener('click', closeDetail);
+  const pageLoader = document.getElementById('page-loader');
+  const mainContent = document.getElementById('main-content');
 
-  const btnExport = document.getElementById('btn-export-csv');
-  if (btnExport) btnExport.addEventListener('click', handleExportCSV);
+  // 1. Tampilkan page-loader dan sembunyikan main-content di awal
+  if (pageLoader) pageLoader.classList.remove('d-none');
+  if (mainContent) mainContent.classList.add('d-none');
 
-  await loadAndRenderArchives();
+  try {
+    const btnClose = document.getElementById('btn-close-detail');
+    if (btnClose) btnClose.addEventListener('click', closeDetail);
+
+    const btnExport = document.getElementById('btn-export-csv');
+    if (btnExport) btnExport.addEventListener('click', handleExportCSV);
+
+    await loadAndRenderArchives();
+  } catch (err) {
+    console.error('[Arsip] Error saat inisialisasi arsip:', err);
+  } finally {
+    // 2. Akhir inisialisasi: Sembunyikan page-loader dan tampilkan main-content
+    if (pageLoader) pageLoader.classList.add('d-none');
+    if (mainContent) mainContent.classList.remove('d-none');
+  }
 }
 
 window.initArsip = initArsip;

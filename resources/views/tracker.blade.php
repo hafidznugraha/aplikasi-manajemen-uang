@@ -29,11 +29,16 @@
   @include('partials.navbar')
 
   <main class="container-fluid px-4 px-md-5 pt-3 pb-5">
-    <!-- Print-Only Header -->
-    <div class="print-header">
-      <h2>BudgetKu &mdash; Rekapitulasi Transaksi</h2>
-      <p id="print-subtitle">Laporan Mutasi Keuangan &bull; Diekspor pada: <span id="print-date"></span></p>
-    </div>
+    <!-- Page Loader -->
+    @include('partials.loader')
+
+    <!-- Main Content Container (Hidden initially with d-none) -->
+    <div id="main-content" class="d-none">
+      <!-- Print-Only Header -->
+      <div class="print-header">
+        <h2>BudgetKu &mdash; Rekapitulasi Transaksi</h2>
+        <p id="print-subtitle">Laporan Mutasi Keuangan &bull; Diekspor pada: <span id="print-date"></span></p>
+      </div>
 
     <!-- Page Header -->
     <div class="page-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
@@ -152,6 +157,7 @@
         <!-- Rendered via JS -->
       </ul>
     </nav>
+  </div>
   </main>
 
   <!-- Add Transaction Modal (Bootstrap 5 modal-lg at root body level) -->

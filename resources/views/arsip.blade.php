@@ -27,9 +27,14 @@
 @include('partials.navbar')
 
 <main class="container-fluid px-4 px-md-5 pt-3 pb-5">
-  <div class="page-header mb-4 d-flex justify-content-between align-items-center">
-    <h1 class="h3 mb-0">Arsip Bulanan</h1>
-  </div>
+  <!-- Page Loader -->
+  @include('partials.loader')
+
+  <!-- Main Content Container (Hidden initially with d-none) -->
+  <div id="main-content" class="d-none">
+    <div class="page-header mb-4 d-flex justify-content-between align-items-center">
+      <h1 class="h3 mb-0">Arsip Bulanan</h1>
+    </div>
 
   <div id="archive-empty-state" class="empty-state text-center py-5 d-none">
     <i class="bi bi-archive text-muted mb-3" style="font-size: 3rem;"></i>
@@ -127,6 +132,7 @@
       </div>
     </div>
   </div>
+</div>
 </main>
 
 <!-- Bootstrap JS -->

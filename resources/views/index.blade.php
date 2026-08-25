@@ -26,21 +26,26 @@
   @include('partials.navbar')
 
   <main class="container-fluid px-4 px-md-5 pt-3 pb-5">
-    <!-- Setup Alert -->
-    <div id="setup-alert" class="alert alert-warning" role="alert">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>
-      Budget bulan ini belum diatur. <a href="{{ route('budget.index') }}" class="alert-link">Atur budget sekarang</a>.
-    </div>
+    <!-- Page Loader -->
+    @include('partials.loader')
 
-    <!-- Empty State -->
-    <div id="empty-state" class="empty-state text-center my-5 p-5 bg-white rounded shadow-sm">
-      <i class="bi bi-wallet2 display-1 text-muted"></i>
-      <h3 class="mt-3">Selamat Datang di BudgetKu!</h3>
-      <p class="text-muted">Mulai kelola keuangan Anda dengan membuat budget bulanan pertama.</p>
-      <a href="{{ route('budget.index') }}" class="btn btn-primary mt-3"><i class="bi bi-plus-circle"></i> Buat Budget</a>
-    </div>
+    <!-- Main Content Container (Hidden initially with d-none) -->
+    <div id="main-content" class="d-none">
+      <!-- Setup Alert -->
+      <div id="setup-alert" class="alert alert-warning d-none" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Budget bulan ini belum diatur. <a href="{{ route('budget.index') }}" class="alert-link">Atur budget sekarang</a>.
+      </div>
 
-    <div id="dashboard-content" class="d-none">
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state text-center my-5 p-5 bg-white rounded shadow-sm d-none">
+        <i class="bi bi-wallet2 display-1 text-muted"></i>
+        <h3 class="mt-3">Selamat Datang di BudgetKu!</h3>
+        <p class="text-muted">Mulai kelola keuangan Anda dengan membuat budget bulanan pertama.</p>
+        <a href="{{ route('budget.index') }}" class="btn btn-primary mt-3"><i class="bi bi-plus-circle"></i> Buat Budget</a>
+      </div>
+
+      <div id="dashboard-content" class="d-none">
       <!-- 3 Summary Cards -->
       <div class="row g-3 mb-4">
         <!-- Card 1: Total Budget -->
@@ -203,6 +208,7 @@
         </div>
       </div>
     </div>
+  </div>
   </main>
 
   <!-- Bootstrap JS -->

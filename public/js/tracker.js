@@ -96,40 +96,51 @@ function initTomSelectFilters() {
 }
 
 async function initTracker() {
-  formCategory = document.getElementById('txn-category');
-  formSubcategory = document.getElementById('txn-subcategory');
-  filterCategory = document.getElementById('filter-category');
-  editCategory = document.getElementById('edit-txn-category');
-  editSubcategory = document.getElementById('edit-txn-subcategory');
+  const pageLoader = document.getElementById('page-loader');
+  const mainContent = document.getElementById('main-content');
 
-  const txnDateEl = document.getElementById('txn-date');
-  if (txnDateEl && typeof getToday === 'function') {
-    txnDateEl.value = getToday();
-  }
-  
-  initTomSelectFilters();
+  // 1. Tampilkan page-loader dan sembunyikan main-content di awal
+  if (pageLoader) pageLoader.classList.remove('d-none');
+  if (mainContent) mainContent.classList.add('d-none');
 
   try {
+    formCategory = document.getElementById('txn-category');
+    formSubcategory = document.getElementById('txn-subcategory');
+    filterCategory = document.getElementById('filter-category');
+    editCategory = document.getElementById('edit-txn-category');
+    editSubcategory = document.getElementById('edit-txn-subcategory');
+
+    const txnDateEl = document.getElementById('txn-date');
+    if (txnDateEl && typeof getToday === 'function') {
+      txnDateEl.value = getToday();
+    }
+    
+    initTomSelectFilters();
+
     const currentMonth = typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().toISOString().slice(0, 7));
     if (typeof window.syncFromSupabase === 'function') {
       await window.syncFromSupabase(currentMonth);
     }
+
+    populateCategorySelects();
+    updateFundSourceSelects();
+    loadTransactions();
+
+    const addModalEl = document.getElementById('addTransactionModal');
+    if (addModalEl) {
+      addModalEl.addEventListener('show.bs.modal', () => {
+        updateFundSourceSelects();
+      });
+      addModalEl.addEventListener('hidden.bs.modal', () => {
+        resetForm();
+      });
+    }
   } catch (err) {
     console.error('[Tracker] Gagal sinkronisasi data dari Supabase:', err);
-  }
-
-  populateCategorySelects();
-  updateFundSourceSelects();
-  loadTransactions();
-
-  const addModalEl = document.getElementById('addTransactionModal');
-  if (addModalEl) {
-    addModalEl.addEventListener('show.bs.modal', () => {
-      updateFundSourceSelects();
-    });
-    addModalEl.addEventListener('hidden.bs.modal', () => {
-      resetForm();
-    });
+  } finally {
+    // 2. Akhir inisialisasi: Sembunyikan page-loader dan tampilkan main-content
+    if (pageLoader) pageLoader.classList.add('d-none');
+    if (mainContent) mainContent.classList.remove('d-none');
   }
 }
 

@@ -102,28 +102,46 @@ function updateNavbarMonthDisplay() {
  * Inisialisasi Halaman Budget
  */
 window.initBudget = async function() {
-  currentMonthContext = (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')));
-  window.currentMonthContext = currentMonthContext;
+  const pageLoader = document.getElementById('page-loader');
+  const mainContent = document.getElementById('main-content');
+  const allocationBar = document.getElementById('allocation-bar-footer');
 
-  totalBudgetInput = document.getElementById('total-budget-input') || document.getElementById('total_budget');
-  totalCashInput = document.getElementById('total-cash-input') || document.getElementById('total_cash');
-  categoriesContainer = document.getElementById('categories-container');
-  emptyStateCategories = document.getElementById('empty-state-categories');
-  btnAddCategoryTop = document.getElementById('btn-add-category-top');
-  allocatedText = document.getElementById('allocated-text');
-  allocationBadge = document.getElementById('allocation-badge');
-  allocationProgress = document.getElementById('allocation-progress');
-  categoryModal = document.getElementById('category-modal');
-  categoryForm = document.getElementById('category-form');
-  deleteConfirmModal = document.getElementById('delete-confirm-modal');
+  // 1. Tampilkan loader dan sembunyikan main-content di awal
+  if (pageLoader) pageLoader.classList.remove('d-none');
+  if (mainContent) mainContent.classList.add('d-none');
+  if (allocationBar) allocationBar.classList.add('d-none');
 
-  updateNavbarMonthDisplay();
-  setupEventListeners();
-  renderCategories();
-  updateAllocationSummary();
+  try {
+    currentMonthContext = (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')));
+    window.currentMonthContext = currentMonthContext;
 
-  // Muat data total budget, cash, dan kategori untuk bulan aktif (month = currentMonthContext)
-  await loadBudgetDataFromSupabase();
+    totalBudgetInput = document.getElementById('total-budget-input') || document.getElementById('total_budget');
+    totalCashInput = document.getElementById('total-cash-input') || document.getElementById('total_cash');
+    categoriesContainer = document.getElementById('categories-container');
+    emptyStateCategories = document.getElementById('empty-state-categories');
+    btnAddCategoryTop = document.getElementById('btn-add-category-top');
+    allocatedText = document.getElementById('allocated-text');
+    allocationBadge = document.getElementById('allocation-badge');
+    allocationProgress = document.getElementById('allocation-progress');
+    categoryModal = document.getElementById('category-modal');
+    categoryForm = document.getElementById('category-form');
+    deleteConfirmModal = document.getElementById('delete-confirm-modal');
+
+    updateNavbarMonthDisplay();
+    setupEventListeners();
+    renderCategories();
+    updateAllocationSummary();
+
+    // Muat data total budget, cash, dan kategori untuk bulan aktif (month = currentMonthContext)
+    await loadBudgetDataFromSupabase();
+  } catch (err) {
+    console.error('Error saat inisialisasi budget:', err);
+  } finally {
+    // 2. Akhir inisialisasi: Sembunyikan page-loader dan tampilkan main-content
+    if (pageLoader) pageLoader.classList.add('d-none');
+    if (mainContent) mainContent.classList.remove('d-none');
+    if (allocationBar) allocationBar.classList.remove('d-none');
+  }
 };
 
 /**

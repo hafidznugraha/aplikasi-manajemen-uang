@@ -14,9 +14,15 @@ const recentItemsPerPage = 5;
  * Inisialisasi Dashboard secara Asynchronous langsung dari Supabase
  */
 async function initDashboard() {
+  const pageLoader = document.getElementById('page-loader');
+  const mainContent = document.getElementById('main-content');
   const setupAlert = document.getElementById('setup-alert');
   const emptyState = document.getElementById('empty-state');
   const dashboardContent = document.getElementById('dashboard-content');
+
+  // 1. Tampilkan page-loader dan sembunyikan main-content di awal
+  if (pageLoader) pageLoader.classList.remove('d-none');
+  if (mainContent) mainContent.classList.add('d-none');
 
   try {
     const supabase = typeof window.getSupabaseClient === 'function' 
@@ -99,6 +105,10 @@ async function initDashboard() {
   } catch (err) {
     console.error('[Dashboard] Error saat memuat data dari Supabase:', err);
     if (setupAlert) setupAlert.classList.remove('d-none');
+  } finally {
+    // 3. Akhir inisialisasi: Sembunyikan page-loader dan tampilkan main-content
+    if (pageLoader) pageLoader.classList.add('d-none');
+    if (mainContent) mainContent.classList.remove('d-none');
   }
 }
 

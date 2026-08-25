@@ -26,13 +26,18 @@
   @include('partials.navbar')
 
   <main class="container-fluid px-4 px-md-5 pt-3" style="margin-bottom: 120px;">
-    <!-- Page Header -->
-    <div class="page-header d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h1 class="h3 mb-1 fw-bold text-dark">Setup Budget Bulanan</h1>
-        <p class="text-muted mb-0 small">Atur dan alokasikan rencana keuangan Anda untuk bulan ini</p>
+    <!-- Page Loader -->
+    @include('partials.loader')
+
+    <!-- Main Content Container (Hidden initially with d-none) -->
+    <div id="main-content" class="d-none">
+      <!-- Page Header -->
+      <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3 mb-1 fw-bold text-dark">Setup Budget Bulanan</h1>
+          <p class="text-muted mb-0 small">Atur dan alokasikan rencana keuangan Anda untuk bulan ini</p>
+        </div>
       </div>
-    </div>
 
     <!-- Total Uang Bulanan Card -->
     <div class="card card-budgetku mb-4">
@@ -125,10 +130,11 @@
 
       </div>
     </div>
+  </div>
   </main>
 
   <!-- Allocation Summary Bar (Permanently Fixed to Bottom) -->
-  <footer class="allocation-bar">
+  <footer class="allocation-bar d-none" id="allocation-bar-footer">
     <div class="container-fluid px-4 px-md-5">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="fw-bold fs-6 text-dark">Total Teralokasi: <span id="allocated-text" class="text-primary">Rp 0 / Rp 0</span></span>
