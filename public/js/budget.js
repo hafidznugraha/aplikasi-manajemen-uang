@@ -201,8 +201,8 @@ async function loadBudgetDataFromSupabase() {
       console.error('[Supabase] Gagal membaca data budget:', error);
       if (typeof window.showAppModal === 'function') {
         window.showAppModal({
-          title: 'Gagal Memuat Data Supabase',
-          message: `Terjadi kendala saat membaca data dari tabel budgets: ${error.message}`,
+          title: 'Gagal Memuat Data',
+          message: `Terjadi kendala saat membaca data budget: ${error.message}`,
           type: 'danger'
         });
       }
@@ -259,7 +259,7 @@ async function handleSetBudget() {
 
   const client = getSupabaseClient();
   if (!client) {
-    const errorMsg = 'Koneksi Supabase JS Client belum terpasang atau tidak tersedia.';
+    const errorMsg = 'Koneksi ke server belum terpasang atau tidak tersedia. Pastikan perangkat Anda terhubung ke internet.';
     if (typeof window.showAppModal === 'function') {
       window.showAppModal({
         title: 'Koneksi Tidak Tersedia',
@@ -322,11 +322,11 @@ async function handleSetBudget() {
     if (typeof window.showAppModal === 'function') {
       window.showAppModal({
         title: 'Berhasil Disimpan',
-        message: `Total uang bulanan sebesar <strong>${window.formatRupiah ? window.formatRupiah(totalBudget) : 'Rp ' + totalBudget}</strong> berhasil disimpan ke database Supabase.`,
+        message: `Total uang bulanan sebesar <strong>${window.formatRupiah ? window.formatRupiah(totalBudget) : 'Rp ' + totalBudget}</strong> berhasil disimpan.`,
         type: 'success'
       });
     } else {
-      alert('Total budget bulanan berhasil disimpan ke Supabase!');
+      alert(`Total uang bulanan sebesar ${window.formatRupiah ? window.formatRupiah(totalBudget) : 'Rp ' + totalBudget} berhasil disimpan.`);
     }
 
     const feedback = document.getElementById('budget-saved-feedback');
@@ -344,18 +344,18 @@ async function handleSetBudget() {
       }, 2000);
     }
   } catch (err) {
-    // 4. Error Handling: Tampilkan pesan asli dari Supabase (misal RLS issue)
+    // 4. Error Handling: Tampilkan pesan asli error (misal RLS / network issue)
     console.error('[Supabase] Gagal melakukan upsert budget:', err);
-    const errorMessage = err.message || err.error_description || 'Terjadi kegagalan saat menyimpan ke database Supabase.';
+    const errorMessage = err.message || err.error_description || 'Terjadi kendala saat menyimpan data budget.';
     
     if (typeof window.showAppModal === 'function') {
       window.showAppModal({
-        title: 'Gagal Menyimpan ke Supabase',
-        message: `Terjadi kesalahan dari Supabase:<br><br><div class="p-2 bg-danger-subtle text-danger rounded small font-monospace">${errorMessage}</div>`,
+        title: 'Gagal Menyimpan Data',
+        message: `Terjadi kendala saat menyimpan data:<br><br><div class="p-2 bg-danger-subtle text-danger rounded small font-monospace">${errorMessage}</div>`,
         type: 'danger'
       });
     } else {
-      alert(`Gagal menyimpan ke Supabase: ${errorMessage}`);
+      alert(`Gagal menyimpan data: ${errorMessage}`);
     }
   } finally {
     if (btn) {
