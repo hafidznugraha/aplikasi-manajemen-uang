@@ -119,10 +119,14 @@ async function initTracker() {
   }
 
   populateCategorySelects();
+  updateFundSourceSelects();
   loadTransactions();
 
   const addModalEl = document.getElementById('addTransactionModal');
   if (addModalEl) {
+    addModalEl.addEventListener('show.bs.modal', () => {
+      updateFundSourceSelects();
+    });
     addModalEl.addEventListener('hidden.bs.modal', () => {
       resetForm();
     });
@@ -131,8 +135,81 @@ async function initTracker() {
 
 window.initTracker = initTracker;
 
+/**
+ * 1. Kalkulasi Sisa Saldo Real-time per Sumber Dana (Bank vs Tunai)
+ */
+function calculateFundSourceBalances() {
+  const budget = typeof window.getBudget === 'function' ? window.getBudget() : {};
+  const initialBank = budget.total_budget != null ? Number(budget.total_budget) : (Number(budget.totalBudget) || 0);
+  const initialCash = budget.total_cash != null ? Number(budget.total_cash) : (Number(budget.totalCash) || 0);
+
+  const transactions = typeof window.getTransactions === 'function' ? window.getTransactions() : [];
+  
+  let bankIncome = 0;
+  let cashIncome = 0;
+  let bankSpent = 0;
+  let cashSpent = 0;
+
+  transactions.forEach(txn => {
+    const type = txn.type || 'expense';
+    const fundSource = (txn.fund_source || txn.fundSource || 'bank').toLowerCase();
+    const amount = Number(txn.amount) || 0;
+
+    if (type === 'income') {
+      if (fundSource === 'cash') {
+        cashIncome += amount;
+      } else {
+        bankIncome += amount;
+      }
+    } else if (type === 'expense') {
+      const isSystem = !!(txn.is_system || txn.isSystem);
+      if (!isSystem) {
+        if (fundSource === 'cash') {
+          cashSpent += amount;
+        } else {
+          bankSpent += amount;
+        }
+      }
+    }
+  });
+
+  const sisaBank = (initialBank + bankIncome) - bankSpent;
+  const sisaCash = (initialCash + cashIncome) - cashSpent;
+
+  return { sisaBank, sisaCash };
+}
+
+/**
+ * 2. Update Teks Opsi Dropdown Sumber Dana (Menampilkan Nominal Sisa Saldo)
+ */
+function updateFundSourceSelects() {
+  const { sisaBank, sisaCash } = calculateFundSourceBalances();
+  const bankFormatted = window.formatRupiah ? window.formatRupiah(sisaBank) : 'Rp ' + sisaBank;
+  const cashFormatted = window.formatRupiah ? window.formatRupiah(sisaCash) : 'Rp ' + sisaCash;
+
+  const selectIds = ['txn-fund-source', 'edit-txn-fund-source'];
+  selectIds.forEach(id => {
+    const selectEl = document.getElementById(id);
+    if (!selectEl) return;
+
+    const bankOption = selectEl.querySelector('option[value="bank"]');
+    if (bankOption) {
+      bankOption.textContent = `Saldo Bank / E-Wallet (${bankFormatted})`;
+    }
+
+    const cashOption = selectEl.querySelector('option[value="cash"]');
+    if (cashOption) {
+      cashOption.textContent = `Uang Tunai (${cashFormatted})`;
+    }
+  });
+}
+
+window.calculateFundSourceBalances = calculateFundSourceBalances;
+window.updateFundSourceSelects = updateFundSourceSelects;
+
 function populateCategorySelects() {
   const categories = getCategories();
+  updateFundSourceSelects();
   
   // Clear existing
   if (formCategory) formCategory.innerHTML = '<option value="" disabled selected>Pilih Kategori</option>';
@@ -800,6 +877,7 @@ async function confirmAndReallocate() {
 
 function loadTransactions() {
   currentTransactions = getTransactions();
+  updateFundSourceSelects();
   applyFilters();
 }
 
@@ -1047,6 +1125,8 @@ function openEditDialog(txnId) {
 
   document.getElementById('edit-txn-date').value = txn.date;
   document.getElementById('edit-txn-desc').value = txn.description;
+
+  updateFundSourceSelects();
 
   const editFundSourceEl = document.getElementById('edit-txn-fund-source');
   if (editFundSourceEl) {
