@@ -295,16 +295,31 @@ function renderCategoryProgress(budget) {
       ? '<span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill small ms-1" style="font-size: 0.75rem;"><i class="bi bi-piggy-bank me-1"></i>Tabungan</span>'
       : '';
     
+    const remaining = catBudget - spent;
+    const formattedSpent = window.formatRupiah ? window.formatRupiah(spent) : 'Rp ' + spent.toLocaleString('id-ID');
+    const formattedBudget = window.formatRupiah ? window.formatRupiah(catBudget) : 'Rp ' + catBudget.toLocaleString('id-ID');
+
+    let remainingHtml = '';
+    if (remaining < 0) {
+      const overspent = Math.abs(remaining);
+      const formattedOverspent = window.formatRupiah ? window.formatRupiah(overspent) : 'Rp ' + overspent.toLocaleString('id-ID');
+      remainingHtml = `<small class="text-danger d-block mt-1">Over budget: ${formattedOverspent}</small>`;
+    } else {
+      const formattedRemaining = window.formatRupiah ? window.formatRupiah(remaining) : 'Rp ' + remaining.toLocaleString('id-ID');
+      remainingHtml = `<small class="text-muted d-block mt-1">Sisa: ${formattedRemaining}</small>`;
+    }
+
     const div = document.createElement('div');
     div.className = 'mb-3 category-progress';
     div.innerHTML = `
       <div class="d-flex justify-content-between align-items-end mb-1">
         <span class="fw-medium">${category.name} ${savingsBadge}</span>
-        <small class="text-muted">${window.formatRupiahShort ? window.formatRupiahShort(spent) : window.formatRupiah(spent)} / ${window.formatRupiahShort ? window.formatRupiahShort(catBudget) : window.formatRupiah(catBudget)}</small>
+        <small class="text-muted">${formattedSpent} / ${formattedBudget}</small>
       </div>
       <div class="progress progress-budgetku" style="height: 10px;">
         <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${Math.min(percentage, 100)}%" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
+      ${remainingHtml}
     `;
     container.appendChild(div);
   });
