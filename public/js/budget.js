@@ -439,13 +439,43 @@ async function handleSetBudget() {
     };
 
     // Jalankan operasi upsert (Update or Insert) ke tabel budgets
-    const { data, error } = await client
-      .from('budgets')
-      .upsert(payload, { onConflict: 'user_id,month' })
-      .select();
+    let saveSuccess = false;
+    try {
+      const { data, error } = await client
+        .from('budgets')
+        .upsert(payload, { onConflict: 'user_id,month' })
+        .select();
 
-    if (error) {
-      throw error;
+      if (!error && data) {
+        saveSuccess = true;
+      } else if (error) {
+        console.warn('[Supabase Upsert] Warning upsert Supabase, beralih ke server API:', error);
+      }
+    } catch (upsertErr) {
+      console.warn('[Supabase Upsert] Gagal via REST client:', upsertErr);
+    }
+
+    // Jika Supabase client gagal, fallback simpan via backend API server
+    if (!saveSuccess) {
+      const res = await fetch('/api/budget', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          month: currentMonth,
+          amount: grandTotal,
+          total_budget: bankBudget,
+          total_cash: cashBudget,
+          user_id: user.id,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Gagal menyimpan anggaran bulanan ke server.');
+      }
     }
 
     // Update in-memory cache dan sinkronisasi
