@@ -94,18 +94,29 @@ function persistHotCache() {
  */
 function initSupabaseRealtime() {
   if (window._supabaseRealtimeActive) return;
-  if (!window.supabase) return;
 
-  const urlMeta = document.querySelector('meta[name="supabase-url"]');
-  const keyMeta = document.querySelector('meta[name="supabase-key"]');
-  const supabaseUrl = urlMeta ? urlMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.url : '');
-  const supabaseKey = keyMeta ? keyMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.key : '');
+  // Gunakan singleton client dari window.supabaseClient / getSupabaseClient()
+  _supabaseClient = window.supabaseClient || (typeof getSupabaseClient === 'function' ? getSupabaseClient() : null);
 
-  if (!supabaseUrl || !supabaseKey) return;
+  if (!_supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
+    const urlMeta = document.querySelector('meta[name="supabase-url"]');
+    const keyMeta = document.querySelector('meta[name="supabase-key"]');
+    const supabaseUrl = urlMeta ? urlMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.url : '');
+    const supabaseKey = keyMeta ? keyMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.key : '');
+
+    if (supabaseUrl && supabaseKey) {
+      try {
+        _supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        window.supabaseClient = _supabaseClient;
+      } catch (err) {
+        console.warn('[Supabase Realtime] Inisialisasi client gagal:', err);
+      }
+    }
+  }
+
+  if (!_supabaseClient) return;
 
   try {
-    _supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
     // Subscribe ke semua perubahan tabel di schema public via WebSocket
     _supabaseClient
       .channel('budgetku-realtime-channel')
@@ -141,6 +152,16 @@ async function syncFromSupabase(month) {
 
     if (res.ok) {
       const data = await res.json();
+
+      // Sinkronisasi pembaruan UUID jika sebelumnya berformat numerik
+      if (data.user && data.user.id) {
+        const currentUser = getActiveUser();
+        if (currentUser && currentUser.id !== data.user.id) {
+          currentUser.id = data.user.id;
+          localStorage.setItem('budgetku_user', JSON.stringify(currentUser));
+          sessionStorage.setItem('budgetku_user', JSON.stringify(currentUser));
+        }
+      }
 
       const prevStr = JSON.stringify({
         budget: _currentBudget,

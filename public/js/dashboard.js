@@ -41,7 +41,8 @@ async function initDashboard() {
     let budgetData = null;
 
     // 2. Query SELECT ke tabel 'budgets' berdasarkan user_id dan month saat ini
-    if (supabase && user && user.id) {
+    const isUuid = typeof isValidUUID === 'function' ? isValidUUID(user && user.id) : (user && user.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.id));
+    if (supabase && user && user.id && isUuid) {
       const { data, error } = await supabase
         .from('budgets')
         .select('*')

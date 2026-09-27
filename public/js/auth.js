@@ -54,6 +54,23 @@ function updateNavbarUserInfo() {
     const emailEl = document.getElementById('navbar-user-email');
     if (nameEl && user.name) nameEl.textContent = user.name;
     if (emailEl && user.email) emailEl.textContent = user.email;
+
+    // Auto-upgrade session jika format ID masih numerik / legacy
+    const isUuid = typeof isValidUUID === 'function' ? isValidUUID(user.id) : (user.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(user.id));
+    if (user.id && !isUuid) {
+      fetch(`/api/sync?month=current&user_id=${encodeURIComponent(user.id)}`, {
+        headers: { 'Accept': 'application/json' }
+      })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.user && data.user.id) {
+          user.id = data.user.id;
+          localStorage.setItem('budgetku_user', JSON.stringify(user));
+          sessionStorage.setItem('budgetku_user', JSON.stringify(user));
+        }
+      })
+      .catch(() => {});
+    }
   } catch (e) {
     console.error('Error parsing user session', e);
   }

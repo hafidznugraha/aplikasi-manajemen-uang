@@ -26,14 +26,48 @@ class ApiController extends Controller
     }
 
     /**
-     * Dapatkan numeric user_id dari request jika ada
+     * Dapatkan UUID user dari request (mendukung format UUID, legacy integer ID, atau email)
      */
-    protected function getUserIdFromRequest(Request $request): ?int
+    protected function getUserIdFromRequest(Request $request): ?string
     {
-        $userId = $request->input('user_id', $request->query('user_id'));
-        if ($userId && is_numeric($userId)) {
-            return (int) $userId;
+        $rawId = $request->input('user_id', $request->query('user_id'));
+        if (!$rawId) {
+            return null;
         }
+
+        $rawId = trim((string) $rawId);
+
+        // 1. Jika sudah merupakan format UUID standar (36 karakter)
+        if (\Illuminate\Support\Str::isUuid($rawId)) {
+            return $rawId;
+        }
+
+        // 2. Jika merupakan ID numerik (legacy integer ID dari tabel users)
+        if (is_numeric($rawId)) {
+            $user = User::find((int) $rawId);
+            if ($user) {
+                if (empty($user->uuid)) {
+                    $authUser = \Illuminate\Support\Facades\DB::select("SELECT id FROM auth.users WHERE email = ? LIMIT 1", [$user->email]);
+                    $user->uuid = !empty($authUser) ? $authUser[0]->id : (string) \Illuminate\Support\Str::uuid();
+                    $user->save();
+                }
+                return (string) $user->uuid;
+            }
+        }
+
+        // 3. Jika berupa alamat email
+        if (filter_var($rawId, FILTER_VALIDATE_EMAIL)) {
+            $user = User::where('email', strtolower($rawId))->first();
+            if ($user) {
+                if (empty($user->uuid)) {
+                    $authUser = \Illuminate\Support\Facades\DB::select("SELECT id FROM auth.users WHERE email = ? LIMIT 1", [$user->email]);
+                    $user->uuid = !empty($authUser) ? $authUser[0]->id : (string) \Illuminate\Support\Str::uuid();
+                    $user->save();
+                }
+                return (string) $user->uuid;
+            }
+        }
+
         return null;
     }
 
@@ -81,6 +115,10 @@ class ApiController extends Controller
         $archives = $archiveQuery->orderBy('month', 'desc')->limit(6)->get();
 
         return response()->json([
+            'user' => $userId ? [
+                'id' => (string) $userId,
+                'uuid' => (string) $userId,
+            ] : null,
             'budget' => [
                 'id' => (string) $budget->id,
                 'month' => $budget->month,
@@ -910,11 +948,16 @@ class ApiController extends Controller
             ], 422);
         }
 
+        // Ambil UUID dari auth.users (jika dibuat saat sendOtp) atau generate UUIDv4
+        $authUser = \Illuminate\Support\Facades\DB::select("SELECT id FROM auth.users WHERE email = ? LIMIT 1", [$email]);
+        $userUuid = !empty($authUser) ? $authUser[0]->id : (string) \Illuminate\Support\Str::uuid();
+
         // Buat User di database Supabase (Password otomatis di-hash Bcrypt oleh model User)
         $user = User::create([
             'name' => $cached['name'],
             'email' => $email,
             'password' => $cached['password'],
+            'uuid' => $userUuid,
         ]);
 
         Cache::forget("reg_otp_{$email}");
@@ -922,7 +965,9 @@ class ApiController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pendaftaran akun berhasil!',
-            'id' => (string) $user->id,
+            'id' => (string) $user->uuid,
+            'uuid' => (string) $user->uuid,
+            'numeric_id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
         ], 201);
@@ -1040,8 +1085,16 @@ class ApiController extends Controller
             ], 401);
         }
 
+        if (empty($user->uuid)) {
+            $authUser = \Illuminate\Support\Facades\DB::select("SELECT id FROM auth.users WHERE email = ? LIMIT 1", [$user->email]);
+            $user->uuid = !empty($authUser) ? $authUser[0]->id : (string) \Illuminate\Support\Str::uuid();
+            $user->save();
+        }
+
         return response()->json([
-            'id' => (string) $user->id,
+            'id' => (string) $user->uuid,
+            'uuid' => (string) $user->uuid,
+            'numeric_id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
         ]);
@@ -1064,7 +1117,7 @@ class ApiController extends Controller
 
         $user = null;
         if ($userId) {
-            $user = User::find($userId);
+            $user = User::where('uuid', $userId)->orWhere('id', is_numeric($userId) ? (int) $userId : 0)->first();
         }
         if (!$user && $email) {
             $user = User::where('email', $email)->first();

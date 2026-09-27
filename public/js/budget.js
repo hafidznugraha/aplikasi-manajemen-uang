@@ -30,6 +30,10 @@ function getSupabaseClient() {
   if (window.supabaseClient) {
     return window.supabaseClient;
   }
+  if (typeof window.getSupabaseClient === 'function') {
+    const client = window.getSupabaseClient();
+    if (client) return client;
+  }
   const urlMeta = document.querySelector('meta[name="supabase-url"]');
   const keyMeta = document.querySelector('meta[name="supabase-key"]');
   const supabaseUrl = (urlMeta ? urlMeta.getAttribute('content') : '') || window.SUPABASE_URL || 'https://dmhifcfsloncgjrxzvnl.supabase.co';
@@ -245,6 +249,18 @@ async function loadBudgetDataFromSupabase() {
 
   if (!client || !userId) {
     console.warn('[Supabase] Client atau User tidak tersedia, memuat dari fallback storage.');
+    renderTotalBudgetFromMemory();
+    await checkPreviousMonthCategories();
+    return;
+  }
+
+  // Jika userId bukan UUID yang valid (misal ID numerik 11), lakukan sinkronisasi API dulu agar tidak memicu 22P02
+  const isUuid = typeof isValidUUID === 'function' ? isValidUUID(userId) : /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+  if (!isUuid) {
+    console.warn('[Supabase] User ID bukan UUID valid, memuat data dari sinkronisasi server...');
+    if (typeof syncFromSupabase === 'function') {
+      await syncFromSupabase(targetMonth);
+    }
     renderTotalBudgetFromMemory();
     await checkPreviousMonthCategories();
     return;
@@ -999,7 +1015,8 @@ async function checkPreviousMonthCategories() {
     let hasPrevious = false;
     let prevMonthLabel = '';
 
-    if (client && userId) {
+    const isUuid = typeof isValidUUID === 'function' ? isValidUUID(userId) : /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+    if (client && userId && isUuid) {
       // Query ke database Supabase untuk mengecek kategori bulan sebelum currentMonthContext
       const { data, error } = await client
         .from('budgets')
