@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Reset Password Module (reset-password.js)
+   BudgetKu : Reset Password Module (reset-password.js)
    Handles setting a new password via Supabase Auth recovery flow
    with strict error handling and session cleanup.
    ============================================================ */

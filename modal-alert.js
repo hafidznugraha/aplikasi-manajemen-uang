@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Custom Modern Alert & Notification Modal
+   BudgetKu : Custom Modern Alert & Notification Modal
    Replaces native browser alert() with a modern Bootstrap 5 modal.
    ============================================================ */
 

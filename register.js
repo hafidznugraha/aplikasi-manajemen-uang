@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Register Module with 8-Digit Email OTP Verification
+   BudgetKu : Register Module with 8-Digit Email OTP Verification
    Handles multi-step registration:
    Step 1: Input user details & send 8-digit OTP to real email
    Step 2: Interactive 8-digit OTP verification with countdown timer

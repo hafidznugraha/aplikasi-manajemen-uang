@@ -14,21 +14,20 @@
   <!-- Custom CSS -->
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
 </head>
-<body style="background-color: #f8fafc; font-family: 'Inter', sans-serif;">
+<body>
 
   @include('partials.navbar')
 
-  <!-- Main Content Container -->
   <main class="main-content">
-    <div class="container-fluid px-4 px-md-5 py-4">
+    <div class="container-fluid px-3 px-md-5 py-4">
       
       <!-- Page Header -->
       <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-          <h4 class="fw-bold text-dark mb-1">
+          <h1 class="h3 fw-bold mb-1">
             <i class="bi bi-person-gear text-primary me-2"></i>Profil Pengguna
-          </h4>
-          <p class="text-muted small mb-0">Kelola informasi akun dan pengaturan keamanan kata sandi Anda</p>
+          </h1>
+          <p class="text-secondary small mb-0">Kelola informasi akun dan pengaturan keamanan kata sandi Anda</p>
         </div>
       </div>
 
@@ -37,14 +36,14 @@
         
         <!-- CARD 1: Informasi Akun -->
         <div class="col-lg-6">
-          <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
-            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-              <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 56px; height: 56px;">
+          <div class="card card-budgetku p-4 h-100">
+            <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom" style="border-color: var(--bk-border);">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background-color: var(--bk-primary-light); color: var(--bk-primary);">
                 <i class="bi bi-person-circle fs-2"></i>
               </div>
               <div class="flex-grow-1 overflow-hidden">
-                <h5 class="fw-bold text-dark mb-0 text-truncate" id="card-user-name">Memuat...</h5>
-                <span class="badge bg-success bg-opacity-10 text-success fw-medium px-2 py-1 mt-1">
+                <h5 class="fw-bold mb-0 text-truncate" id="card-user-name">Memuat...</h5>
+                <span class="badge fw-medium px-2 py-1 mt-1 rounded-pill" style="background-color: var(--bk-success-light); color: var(--bk-success);">
                   <i class="bi bi-shield-check me-1"></i>Akun Terverifikasi
                 </span>
               </div>
@@ -53,24 +52,24 @@
             <form id="profile-info-form">
               <!-- Nama Lengkap Input -->
               <div class="mb-3">
-                <label for="profile-name" class="form-label fw-medium text-dark small">Nama Lengkap</label>
+                <label for="profile-name" class="form-label fw-medium small">Nama Lengkap</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-person"></i></span>
-                  <input type="text" class="form-control bg-light border-start-0 ps-0 text-dark fw-medium" id="profile-name" readonly disabled>
+                  <span class="input-group-text"><i class="bi bi-person"></i></span>
+                  <input type="text" class="form-control fw-medium" id="profile-name" readonly disabled>
                 </div>
               </div>
 
               <!-- Alamat Email Input -->
               <div class="mb-3">
-                <label for="profile-email" class="form-label fw-medium text-dark small">Alamat Email</label>
+                <label for="profile-email" class="form-label fw-medium small">Alamat Email</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
-                  <input type="email" class="form-control bg-light border-start-0 ps-0 text-dark fw-medium" id="profile-email" readonly disabled>
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="email" class="form-control fw-medium" id="profile-email" readonly disabled>
                 </div>
               </div>
 
               <!-- Info Box -->
-              <div class="alert alert-light border small text-muted mb-0 d-flex align-items-center gap-2 mt-4">
+              <div class="alert border small text-secondary mb-0 d-flex align-items-center gap-2 mt-4" style="background-color: var(--bk-card-secondary-bg); border-color: var(--bk-border) !important;">
                 <i class="bi bi-shield-check text-success fs-5"></i>
                 <span>Data akun Anda dilindungi dengan sistem enkripsi tingkat lanjut dan disimpan secara aman.</span>
               </div>
@@ -80,35 +79,35 @@
 
         <!-- CARD 2: Ubah Kata Sandi -->
         <div class="col-lg-6">
-          <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
-            <div class="d-flex align-items-center gap-2 mb-4 pb-3 border-bottom">
-              <div class="d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-warning rounded-circle" style="width: 40px; height: 40px;">
+          <div class="card card-budgetku p-4 h-100">
+            <div class="d-flex align-items-center gap-2 mb-4 pb-3 border-bottom" style="border-color: var(--bk-border);">
+              <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 42px; height: 42px; background-color: var(--bk-warning-light); color: var(--bk-warning);">
                 <i class="bi bi-shield-lock-fill fs-5"></i>
               </div>
-              <h5 class="fw-bold text-dark mb-0">Ubah Kata Sandi</h5>
+              <h5 class="fw-bold mb-0">Ubah Kata Sandi</h5>
             </div>
 
             <form id="profile-password-form" onsubmit="return handleUpdatePassword(event);">
               <!-- Kata Sandi Baru -->
               <div class="mb-3">
-                <label for="new-password" class="form-label fw-medium text-dark small">Kata Sandi Baru</label>
+                <label for="new-password" class="form-label fw-medium small">Kata Sandi Baru</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
-                  <input type="password" class="form-control border-start-0 ps-0" id="new-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" class="form-control" id="new-password" placeholder="Minimal 6 karakter" required minlength="6" autocomplete="new-password">
                 </div>
               </div>
 
               <!-- Konfirmasi Kata Sandi Baru -->
               <div class="mb-4">
-                <label for="confirm-password" class="form-label fw-medium text-dark small">Konfirmasi Kata Sandi Baru</label>
+                <label for="confirm-password" class="form-label fw-medium small">Konfirmasi Kata Sandi Baru</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-shield-check"></i></span>
-                  <input type="password" class="form-control border-start-0 ps-0" id="confirm-password" placeholder="Ulangi kata sandi baru" required minlength="6" autocomplete="new-password">
+                  <span class="input-group-text"><i class="bi bi-shield-check"></i></span>
+                  <input type="password" class="form-control" id="confirm-password" placeholder="Ulangi kata sandi baru" required minlength="6" autocomplete="new-password">
                 </div>
               </div>
 
               <!-- Tombol Submit -->
-              <button type="submit" id="btn-save-password" class="btn btn-primary w-100 py-2 fw-semibold rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-2">
+              <button type="submit" id="btn-save-password" class="btn btn-primary w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2">
                 <i class="bi bi-check2-circle"></i> Simpan Kata Sandi
               </button>
             </form>

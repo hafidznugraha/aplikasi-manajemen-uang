@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — App Entry Point
+   BudgetKu : App Entry Point
    Detects active page, initializes correct module,
    handles month-change check, sets navbar state.
    ============================================================ */

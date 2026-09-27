@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Forgot Password Module (forgot-password.js)
+   BudgetKu : Forgot Password Module (forgot-password.js)
    Handles sending password recovery link via Supabase Auth.
    ============================================================ */
 

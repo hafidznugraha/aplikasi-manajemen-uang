@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Authentication & Route Guard
+   BudgetKu : Authentication & Route Guard
    Handles Supabase Database direct authentication,
    active session ('budgetku_user'), and route protection.
    ============================================================ */

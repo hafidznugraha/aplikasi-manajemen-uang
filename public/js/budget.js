@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Setup Budget Module (budget.js)
+   BudgetKu : Setup Budget Module (budget.js)
    Refactored for Multi-Source Fund Allocation (Bank & Tunai),
    Month Rollover (Pergantian Bulan Otomatis), and Direct Supabase Database Synchronization.
    ============================================================ */

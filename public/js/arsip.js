@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Arsip Module (arsip.js)
+   BudgetKu : Arsip Module (arsip.js)
    Refactored for Supabase Cloud Database Direct Synchronization.
    No localStorage reads for budget or archive data.
    ============================================================ */
@@ -227,11 +227,14 @@ function renderChart(archive) {
     archiveChartInstance.destroy();
   }
   
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#f5f5f7' : '#1d1d1f';
+
   const labels = [];
   const data = [];
   const backgroundColor = [
-    '#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', 
-    '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'
+    '#0071e3', '#34c759', '#ff9500', '#5856d6', '#ff2d55', 
+    '#30b0c7', '#32ade6', '#ffd60a', '#af52de', '#a2845e'
   ];
   
   const categories = archive.categories || [];
@@ -245,7 +248,7 @@ function renderChart(archive) {
   if (labels.length === 0) {
     labels.push('Belum ada anggaran');
     data.push(1);
-    backgroundColor[0] = '#e9ecef';
+    backgroundColor[0] = isDark ? '#2c2c2e' : '#e5e5ea';
   }
   
   archiveChartInstance = new Chart(ctx, {
@@ -255,7 +258,8 @@ function renderChart(archive) {
       datasets: [{
         data: data,
         backgroundColor: backgroundColor.slice(0, data.length),
-        borderWidth: 0
+        borderWidth: 2,
+        borderColor: isDark ? '#1c1c1e' : '#ffffff'
       }]
     },
     options: {
@@ -266,7 +270,9 @@ function renderChart(archive) {
           position: 'right',
           labels: {
             usePointStyle: true,
-            boxWidth: 8
+            boxWidth: 8,
+            color: textColor,
+            font: { family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif', size: 12 }
           }
         }
       },

@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Dashboard Module (dashboard.js)
+   BudgetKu : Dashboard Module (dashboard.js)
    Refactored for Direct Supabase Database Synchronization.
    No localStorage reads for budget, categories, or transactions.
    ============================================================ */
@@ -221,13 +221,16 @@ function renderChart(budget) {
   const data = categories.map(c => c.budget || 0);
   
   const backgroundColors = [
-    '#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545',
-    '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0'
+    '#0071e3', '#34c759', '#ff9500', '#5856d6', '#ff2d55',
+    '#30b0c7', '#32ade6', '#ffd60a', '#af52de', '#a2845e'
   ];
 
   if (budgetChartInstance) {
     budgetChartInstance.destroy();
   }
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#f5f5f7' : '#1d1d1f';
 
   budgetChartInstance = new Chart(ctx, {
     type: 'doughnut',
@@ -236,7 +239,8 @@ function renderChart(budget) {
       datasets: [{
         data: data,
         backgroundColor: backgroundColors.slice(0, categories.length),
-        borderWidth: 1
+        borderWidth: 2,
+        borderColor: isDark ? '#1c1c1e' : '#ffffff'
       }]
     },
     options: {
@@ -245,8 +249,17 @@ function renderChart(budget) {
       plugins: {
         legend: {
           position: 'right',
+          labels: {
+            color: textColor,
+            font: { family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif', size: 12 }
+          }
         },
         tooltip: {
+          backgroundColor: isDark ? 'rgba(44, 44, 46, 0.95)' : 'rgba(29, 29, 31, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 10,
+          cornerRadius: 10,
           callbacks: {
             label: function(context) {
               let label = context.label || '';
@@ -343,10 +356,10 @@ function renderCategoryProgress(budget) {
         if (subcatRemaining < 0) {
           const overspent = Math.abs(subcatRemaining);
           const formattedOver = window.formatRupiah ? window.formatRupiah(overspent) : 'Rp ' + overspent.toLocaleString('id-ID');
-          return `<li class="mb-1 text-danger"><i class="bi bi-arrow-return-right me-1 text-danger"></i> <strong>${subcat.name}</strong>: ${formattedSubSpent} / ${formattedSubBudget} &mdash; Sisa: -${formattedOver}</li>`;
+          return `<li class="mb-1 text-danger"><i class="bi bi-arrow-return-right me-1 text-danger"></i> <strong>${subcat.name}</strong>: ${formattedSubSpent} / ${formattedSubBudget} • Sisa: -${formattedOver}</li>`;
         } else {
           const formattedSubRem = window.formatRupiah ? window.formatRupiah(subcatRemaining) : 'Rp ' + subcatRemaining.toLocaleString('id-ID');
-          return `<li class="mb-1"><i class="bi bi-arrow-return-right me-1 text-muted"></i> <strong>${subcat.name}</strong>: ${formattedSubSpent} / ${formattedSubBudget} &mdash; Sisa: ${formattedSubRem}</li>`;
+          return `<li class="mb-1"><i class="bi bi-arrow-return-right me-1 text-muted"></i> <strong>${subcat.name}</strong>: ${formattedSubSpent} / ${formattedSubBudget} • Sisa: ${formattedSubRem}</li>`;
         }
       }).join('');
 
@@ -472,10 +485,14 @@ function renderDailyExpenseChart(budget) {
     dailyChartInstance.destroy();
   }
 
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#a1a1a6' : '#6e6e73';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
   const ctx = canvas.getContext('2d');
   const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-  gradient.addColorStop(0, 'rgba(26, 86, 219, 0.28)');
-  gradient.addColorStop(1, 'rgba(26, 86, 219, 0.01)');
+  gradient.addColorStop(0, 'rgba(0, 113, 227, 0.28)');
+  gradient.addColorStop(1, 'rgba(0, 113, 227, 0.01)');
 
   dailyChartInstance = new Chart(canvas, {
     type: 'line',
@@ -484,13 +501,13 @@ function renderDailyExpenseChart(budget) {
       datasets: [{
         label: 'Pengeluaran',
         data: dailyTotals,
-        borderColor: '#1a56db',
+        borderColor: '#0071e3',
         backgroundColor: gradient,
         borderWidth: 2.5,
         fill: true,
         tension: 0.35,
-        pointBackgroundColor: '#1a56db',
-        pointBorderColor: '#ffffff',
+        pointBackgroundColor: '#0071e3',
+        pointBorderColor: isDark ? '#1c1c1e' : '#ffffff',
         pointBorderWidth: 2,
         pointRadius: dailyTotals.map(v => (v > 0 ? 4.5 : 2)),
         pointHoverRadius: 6.5,
@@ -508,11 +525,11 @@ function renderDailyExpenseChart(budget) {
           display: false,
         },
         tooltip: {
-          backgroundColor: '#1e293b',
+          backgroundColor: isDark ? 'rgba(44, 44, 46, 0.95)' : 'rgba(29, 29, 31, 0.92)',
           titleFont: { size: 12, weight: 'bold' },
           bodyFont: { size: 12 },
           padding: 10,
-          cornerRadius: 8,
+          cornerRadius: 10,
           callbacks: {
             title: function(items) {
               return `Tanggal ${items[0].label} ${window.formatMonth ? window.formatMonth(currentMonthStr) : currentMonthStr}`;
@@ -531,11 +548,11 @@ function renderDailyExpenseChart(budget) {
           title: {
             display: true,
             text: 'Tanggal',
-            color: '#64748b',
+            color: textColor,
             font: { size: 11, weight: '500' }
           },
           ticks: {
-            color: '#64748b',
+            color: textColor,
             font: { size: 11 },
             maxTicksLimit: 16,
           }
@@ -543,10 +560,10 @@ function renderDailyExpenseChart(budget) {
         y: {
           beginAtZero: true,
           grid: {
-            color: '#f1f5f9',
+            color: gridColor,
           },
           ticks: {
-            color: '#64748b',
+            color: textColor,
             font: { size: 11 },
             callback: function(value) {
               if (value >= 1000000) return (value / 1000000) + ' Jt';
@@ -625,10 +642,14 @@ function renderDailyIncomeChart(budget) {
     dailyIncomeChartInstance.destroy();
   }
 
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const textColor = isDark ? '#a1a1a6' : '#6e6e73';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
   const ctx = canvas.getContext('2d');
   const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-  gradient.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
-  gradient.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
+  gradient.addColorStop(0, 'rgba(52, 199, 89, 0.28)');
+  gradient.addColorStop(1, 'rgba(52, 199, 89, 0.01)');
 
   dailyIncomeChartInstance = new Chart(canvas, {
     type: 'line',
@@ -637,13 +658,13 @@ function renderDailyIncomeChart(budget) {
       datasets: [{
         label: 'Pemasukan',
         data: dailyTotals,
-        borderColor: '#10b981',
+        borderColor: '#34c759',
         backgroundColor: gradient,
         borderWidth: 2.5,
         fill: true,
         tension: 0.35,
-        pointBackgroundColor: '#10b981',
-        pointBorderColor: '#ffffff',
+        pointBackgroundColor: '#34c759',
+        pointBorderColor: isDark ? '#1c1c1e' : '#ffffff',
         pointBorderWidth: 2,
         pointRadius: dailyTotals.map(v => (v > 0 ? 4.5 : 2)),
         pointHoverRadius: 6.5,
@@ -661,11 +682,11 @@ function renderDailyIncomeChart(budget) {
           display: false,
         },
         tooltip: {
-          backgroundColor: '#1e293b',
+          backgroundColor: isDark ? 'rgba(44, 44, 46, 0.95)' : 'rgba(29, 29, 31, 0.92)',
           titleFont: { size: 12, weight: 'bold' },
           bodyFont: { size: 12 },
           padding: 10,
-          cornerRadius: 8,
+          cornerRadius: 10,
           callbacks: {
             title: function(items) {
               return `Tanggal ${items[0].label} ${window.formatMonth ? window.formatMonth(currentMonthStr) : currentMonthStr}`;
@@ -684,11 +705,11 @@ function renderDailyIncomeChart(budget) {
           title: {
             display: true,
             text: 'Tanggal',
-            color: '#64748b',
+            color: textColor,
             font: { size: 11, weight: '500' }
           },
           ticks: {
-            color: '#64748b',
+            color: textColor,
             font: { size: 11 },
             maxTicksLimit: 16,
           }
@@ -696,10 +717,10 @@ function renderDailyIncomeChart(budget) {
         y: {
           beginAtZero: true,
           grid: {
-            color: '#f1f5f9',
+            color: gridColor,
           },
           ticks: {
-            color: '#64748b',
+            color: textColor,
             font: { size: 11 },
             callback: function(value) {
               if (value >= 1000000) return (value / 1000000) + ' Jt';
@@ -841,3 +862,13 @@ window.changeRecentPage = function(page) {
   recentCurrentPage = page;
   renderRecentTransactions();
 };
+
+window.addEventListener('themeChanged', () => {
+  const activeBudget = typeof window.getActiveBudget === 'function' ? window.getActiveBudget() : null;
+  if (activeBudget) {
+    renderChart(activeBudget);
+    renderDailyExpenseChart(activeBudget);
+    renderDailyIncomeChart(activeBudget);
+  }
+});
+

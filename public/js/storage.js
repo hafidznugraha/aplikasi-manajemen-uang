@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — High-Performance Realtime Data Layer
+   BudgetKu : High-Performance Realtime Data Layer
    
    - Multi-User Isolated Storage Architecture
    - Instant Server-Hydrated Boot (0ms initial latency)

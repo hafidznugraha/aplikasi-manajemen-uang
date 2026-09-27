@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Login Module (login.js)
+   BudgetKu : Login Module (login.js)
    Handles user authentication with secure Bcrypt password verification
    directly against Supabase database and custom modern modals.
    ============================================================ */

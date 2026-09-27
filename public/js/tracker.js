@@ -1143,7 +1143,7 @@ async function renderTable() {
       `;
     }
     
-    let receiptHtml = '<span class="text-muted">—</span>';
+    let receiptHtml = '<span class="text-secondary opacity-50">-</span>';
     if (txn.hasReceipt) {
       const receiptUrl = await getReceiptURL(txn.id);
       if (receiptUrl) {

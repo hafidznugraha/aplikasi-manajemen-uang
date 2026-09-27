@@ -1,5 +1,5 @@
 /* ============================================================
-   BudgetKu — Profile Module (profile.js)
+   BudgetKu : Profile Module (profile.js)
    Handles user profile information display and secure password
    update via Supabase Database / Backend API.
    ============================================================ */
