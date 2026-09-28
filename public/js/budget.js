@@ -23,64 +23,27 @@ let deleteConfirmModal;
 let currentDeleteId = null;
 
 /**
- * Inisialisasi Supabase JS Client
+ * Dapatkan instance Supabase Client (Singleton)
  * @returns {object|null}
  */
 function getSupabaseClient() {
-  if (window.supabaseClient) {
-    return window.supabaseClient;
-  }
   if (typeof window.getSupabaseClient === 'function') {
-    const client = window.getSupabaseClient();
-    if (client) return client;
+    return window.getSupabaseClient();
   }
-  const urlMeta = document.querySelector('meta[name="supabase-url"]');
-  const keyMeta = document.querySelector('meta[name="supabase-key"]');
-  const supabaseUrl = (urlMeta ? urlMeta.getAttribute('content') : '') || window.SUPABASE_URL || 'https://dmhifcfsloncgjrxzvnl.supabase.co';
-  const supabaseKey = (keyMeta ? keyMeta.getAttribute('content') : '') || window.SUPABASE_ANON_KEY || 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl';
-
-  if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
-    try {
-      window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-      return window.supabaseClient;
-    } catch (e) {
-      console.warn('[Supabase] Gagal membuat client:', e);
-    }
-  }
-  return null;
+  return window.supabaseClient || null;
 }
 
 /**
- * Dapatkan user yang sedang aktif dari session Supabase Auth
+ * Dapatkan user aktif (Non-blocking)
  * @returns {Promise<object|null>}
  */
 async function getActiveSupabaseUser() {
-  const client = getSupabaseClient();
-  if (client && client.auth && typeof client.auth.getUser === 'function') {
-    try {
-      const { data: { user }, error } = await client.auth.getUser();
-      if (user && user.id) {
-        return user;
-      }
-    } catch (err) {
-      console.warn('Gagal membaca user dari client.auth.getUser():', err);
-    }
+  if (typeof window.getActiveSupabaseUser === 'function') {
+    return await window.getActiveSupabaseUser();
   }
-
-  // Fallback: Ambil data user dari session helper aplikasi
   if (typeof window.getActiveUser === 'function') {
-    const active = window.getActiveUser();
-    if (active && active.id) return active;
+    return window.getActiveUser();
   }
-
-  const rawUser = localStorage.getItem('budgetku_user') || sessionStorage.getItem('budgetku_user');
-  if (rawUser) {
-    try {
-      const parsed = JSON.parse(rawUser);
-      if (parsed && parsed.id) return parsed;
-    } catch (e) {}
-  }
-
   return null;
 }
 
@@ -110,10 +73,14 @@ window.initBudget = async function() {
   const mainContent = document.getElementById('main-content');
   const allocationBar = document.getElementById('allocation-bar-footer');
 
-  // 1. Tampilkan loader dan sembunyikan main-content di awal
-  if (pageLoader) pageLoader.classList.remove('d-none');
-  if (mainContent) mainContent.classList.add('d-none');
-  if (allocationBar) allocationBar.classList.add('d-none');
+  const showContent = () => {
+    if (pageLoader) pageLoader.classList.add('d-none');
+    if (mainContent) mainContent.classList.remove('d-none');
+    if (allocationBar) allocationBar.classList.remove('d-none');
+  };
+
+  // Fail-Safe: Konten dijamin tampil maksimal dalam 1.5 detik
+  const safetyTimer = setTimeout(showContent, 1500);
 
   try {
     currentMonthContext = (typeof window.getCurrentMonth === 'function' ? window.getCurrentMonth() : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')));
@@ -136,15 +103,16 @@ window.initBudget = async function() {
     renderCategories();
     updateAllocationSummary();
 
-    // Muat data total budget, cash, dan kategori untuk bulan aktif (month = currentMonthContext)
-    await loadBudgetDataFromSupabase();
+    // Muat data total budget, cash, dan kategori dengan batas waktu maksimal 1.8 detik
+    await Promise.race([
+      loadBudgetDataFromSupabase(),
+      new Promise(resolve => setTimeout(resolve, 1800))
+    ]);
   } catch (err) {
     console.error('Error saat inisialisasi budget:', err);
   } finally {
-    // 2. Akhir inisialisasi: Sembunyikan page-loader dan tampilkan main-content
-    if (pageLoader) pageLoader.classList.add('d-none');
-    if (mainContent) mainContent.classList.remove('d-none');
-    if (allocationBar) allocationBar.classList.remove('d-none');
+    clearTimeout(safetyTimer);
+    showContent();
   }
 };
 
@@ -259,7 +227,12 @@ async function loadBudgetDataFromSupabase() {
   if (!isUuid) {
     console.warn('[Supabase] User ID bukan UUID valid, memuat data dari sinkronisasi server...');
     if (typeof syncFromSupabase === 'function') {
-      await syncFromSupabase(targetMonth);
+      try {
+        await Promise.race([
+          syncFromSupabase(targetMonth),
+          new Promise(r => setTimeout(r, 1200))
+        ]);
+      } catch (e) {}
     }
     renderTotalBudgetFromMemory();
     await checkPreviousMonthCategories();
@@ -267,13 +240,16 @@ async function loadBudgetDataFromSupabase() {
   }
 
   try {
-    // Query SELECT ke tabel budgets berdasarkan user_id dan month = currentMonth
-    const { data, error } = await client
+    // Query SELECT ke tabel budgets berdasarkan user_id dan month = currentMonth dengan timeout 1.5s
+    const queryPromise = client
       .from('budgets')
       .select('*, categories(*, subcategories(*))')
       .eq('user_id', userId)
       .eq('month', targetMonth)
       .maybeSingle();
+
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
     if (error) {
       console.error('[Supabase] Gagal membaca data budget bulan ini:', error);
@@ -1063,17 +1039,21 @@ async function checkPreviousMonthCategories() {
     }
 
     if (!hasPrevious) {
-      // Fallback cek melalui API
+      // Fallback cek melalui API dengan batas waktu 1 detik
       const prevMonth = typeof window.getPreviousMonth === 'function' ? window.getPreviousMonth(currentMonthContext) : '';
       if (prevMonth && userId) {
-        const res = await fetch(`/api/sync?month=${prevMonth}&user_id=${encodeURIComponent(userId)}`);
-        if (res.ok) {
-          const syncData = await res.json();
-          if (syncData.budget && Array.isArray(syncData.budget.categories) && syncData.budget.categories.length > 0) {
-            hasPrevious = true;
-            prevMonthLabel = typeof window.formatMonth === 'function' ? window.formatMonth(prevMonth) : prevMonth;
+        try {
+          const fetchPromise = fetch(`/api/sync?month=${prevMonth}&user_id=${encodeURIComponent(userId)}`);
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000));
+          const res = await Promise.race([fetchPromise, timeoutPromise]);
+          if (res && res.ok) {
+            const syncData = await res.json();
+            if (syncData.budget && Array.isArray(syncData.budget.categories) && syncData.budget.categories.length > 0) {
+              hasPrevious = true;
+              prevMonthLabel = typeof window.formatMonth === 'function' ? window.formatMonth(prevMonth) : prevMonth;
+            }
           }
-        }
+        } catch (e) {}
       }
     }
 

@@ -15,8 +15,8 @@
   <link href="{{ asset('css/style.css') }}" rel="stylesheet">
   
   <!-- Supabase Meta & Realtime Library -->
-  <meta name="supabase-url" content="{{ env('SUPABASE_URL') }}">
-  <meta name="supabase-key" content="{{ env('SUPABASE_KEY') }}">
+  <meta name="supabase-url" content="{{ config('services.supabase.url') ?: env('SUPABASE_URL', 'https://dmhifcfsloncgjrxzvnl.supabase.co') }}">
+  <meta name="supabase-key" content="{{ config('services.supabase.key') ?: env('SUPABASE_KEY', 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl') }}">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <!-- Auth JS (Route Guard) -->

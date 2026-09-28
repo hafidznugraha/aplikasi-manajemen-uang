@@ -5,3 +5,14 @@
   </div>
   <p class="fw-medium mb-0 small" style="color: var(--bk-text-secondary);">Memuat data...</p>
 </div>
+<script>
+  // Fail-safe timeout: Unblock UI after max 2.5s even if any network or script halts
+  setTimeout(function() {
+    var l = document.getElementById('page-loader');
+    var m = document.getElementById('main-content');
+    if (l) l.classList.add('d-none');
+    if (m) m.classList.remove('d-none');
+    var b = document.getElementById('allocation-bar-footer');
+    if (b) b.classList.remove('d-none');
+  }, 2500);
+</script>

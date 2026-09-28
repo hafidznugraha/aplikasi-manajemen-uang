@@ -1,4 +1,4 @@
-# 📄 Product Requirements Document (PRD) — BudgetKu
+# 📄 Product Requirements Document (PRD) : BudgetKu
 
 ---
 

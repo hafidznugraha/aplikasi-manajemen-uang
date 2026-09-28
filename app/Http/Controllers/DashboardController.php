@@ -15,10 +15,13 @@ class DashboardController extends Controller
     }
 
     /**
-     * Tampilkan halaman Setup Budget (Instant Load)
+     * Tampilkan halaman Setup Budget (Instant Load) atau kembalikan JSON jika dipanggil via API
      */
-    public function budget()
+    public function budget(Request $request)
     {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return app(ApiController::class)->getBudget($request);
+        }
         return view('budget');
     }
 

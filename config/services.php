@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'supabase' => [
+        'url' => env('SUPABASE_URL', 'https://dmhifcfsloncgjrxzvnl.supabase.co'),
+        'key' => env('SUPABASE_KEY', 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl'),
+        'secret_key' => env('SUPABASE_SECRET_KEY'),
+    ],
+
 ];

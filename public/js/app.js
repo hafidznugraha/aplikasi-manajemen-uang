@@ -34,8 +34,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   showTopLoader(40);
 
   // 2. Set bulan aktif & active nav link
-  updateMonthDisplay();
-  setActiveNavLink();
+  try {
+    updateMonthDisplay();
+    setActiveNavLink();
+  } catch (e) {
+    console.warn('Nav init warning:', e);
+  }
 
   // 3. Tambahkan click feedback ke semua navbar link
   document.querySelectorAll('.navbar-budgetku .nav-link, .navbar-brand').forEach(link => {
@@ -45,36 +49,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 4. Inisialisasi Storage & Supabase Sync
+  // 4. Inisialisasi Storage & Supabase Sync (Non-blocking, max 1.5s timeout)
   showTopLoader(70);
   if (typeof initStorage === 'function') {
-    await initStorage();
+    try {
+      await Promise.race([
+        initStorage(),
+        new Promise(r => setTimeout(r, 1500))
+      ]);
+    } catch (err) {
+      console.warn('initStorage non-critical error:', err);
+    }
   }
 
   // 5. Inisialisasi halaman yang aktif secara asynchronous
   const page = detectPage();
-  switch (page) {
-    case 'dashboard':
-      if (typeof initDashboard === 'function') await initDashboard();
-      break;
-    case 'budget':
-      if (typeof initBudget === 'function') await initBudget();
-      break;
-    case 'tracker':
-      if (typeof initTracker === 'function') await initTracker();
-      break;
-    case 'arsip':
-      if (typeof initArsip === 'function') await initArsip();
-      break;
+  try {
+    switch (page) {
+      case 'dashboard':
+        if (typeof initDashboard === 'function') await initDashboard();
+        break;
+      case 'budget':
+        if (typeof initBudget === 'function') await initBudget();
+        break;
+      case 'tracker':
+        if (typeof initTracker === 'function') await initTracker();
+        break;
+      case 'arsip':
+        if (typeof initArsip === 'function') await initArsip();
+        break;
+    }
+  } catch (pageErr) {
+    console.error('Page init error:', pageErr);
   }
 
-  // 6. Efek fade-in konten halaman
-  const mainContent = document.querySelector('main');
-  if (mainContent) {
-    mainContent.classList.add('page-content-fade');
+  // 6. Fail-Safe Unblock: Pastikan #page-loader tertutup dan #main-content terbuka
+  const pageLoader = document.getElementById('page-loader');
+  const mainContent = document.getElementById('main-content');
+  if (pageLoader && mainContent && mainContent.classList.contains('d-none')) {
+    pageLoader.classList.add('d-none');
+    mainContent.classList.remove('d-none');
+    const allocationBar = document.getElementById('allocation-bar-footer');
+    if (allocationBar) allocationBar.classList.remove('d-none');
   }
 
-  // 7. Selesaikan animasi loading
+  // 7. Efek fade-in konten halaman
+  const mainEl = document.querySelector('main');
+  if (mainEl) {
+    mainEl.classList.add('page-content-fade');
+  }
+
+  // 8. Selesaikan animasi loading
   hideTopLoader();
 });
 

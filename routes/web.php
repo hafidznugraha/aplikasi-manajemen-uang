@@ -64,3 +64,16 @@ Route::prefix('api')->group(function () {
     Route::post('/auth/forgot-password', [ApiController::class, 'forgotPassword'])->name('api.auth.forgot_password');
     Route::post('/auth/reset-password', [ApiController::class, 'resetPassword'])->name('api.auth.reset_password');
 });
+
+// Serverless Direct Aliases (if runtime ever strips /api prefix from pathInfo)
+Route::get('/sync', [ApiController::class, 'getSyncData']);
+Route::post('/budget', [ApiController::class, 'updateTotalBudget']);
+Route::post('/categories', [ApiController::class, 'addCategory']);
+Route::post('/categories/copy-previous', [ApiController::class, 'copyPreviousCategories']);
+Route::put('/categories/{id}', [ApiController::class, 'updateCategory']);
+Route::delete('/categories/{id}', [ApiController::class, 'deleteCategory']);
+Route::get('/transactions', [ApiController::class, 'getTransactions']);
+Route::post('/transactions', [ApiController::class, 'addTransaction']);
+Route::put('/transactions/{id}', [ApiController::class, 'updateTransaction']);
+Route::delete('/transactions/{id}', [ApiController::class, 'deleteTransaction']);
+

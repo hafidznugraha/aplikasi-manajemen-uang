@@ -78,8 +78,13 @@ async function initStorage() {
   // 1. Setup Supabase Realtime WebSocket Subscriptions
   initSupabaseRealtime();
 
-  // 2. Background sync kilat langsung dari database Supabase (non-blocking)
-  await syncFromSupabase(month);
+  // 2. Background sync kilat langsung dari database Supabase (non-blocking, timeout 1.5s)
+  try {
+    await Promise.race([
+      syncFromSupabase(month),
+      new Promise(resolve => setTimeout(resolve, 1500))
+    ]);
+  } catch (e) {}
 }
 
 /**
@@ -101,8 +106,8 @@ function initSupabaseRealtime() {
   if (!_supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
     const urlMeta = document.querySelector('meta[name="supabase-url"]');
     const keyMeta = document.querySelector('meta[name="supabase-key"]');
-    const supabaseUrl = urlMeta ? urlMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.url : '');
-    const supabaseKey = keyMeta ? keyMeta.getAttribute('content') : (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.key : '');
+    const supabaseUrl = (urlMeta ? urlMeta.getAttribute('content') : '') || (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.url : '') || window.SUPABASE_URL || 'https://dmhifcfsloncgjrxzvnl.supabase.co';
+    const supabaseKey = (keyMeta ? keyMeta.getAttribute('content') : '') || (window.__SUPABASE_CONFIG__ ? window.__SUPABASE_CONFIG__.key : '') || window.SUPABASE_ANON_KEY || 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl';
 
     if (supabaseUrl && supabaseKey) {
       try {
@@ -146,9 +151,11 @@ function initSupabaseRealtime() {
 async function syncFromSupabase(month) {
   try {
     const userId = getActiveUserId();
-    const res = await fetch(`/api/sync?month=${month}&user_id=${encodeURIComponent(userId)}`, {
+    const fetchPromise = fetch(`/api/sync?month=${month}&user_id=${encodeURIComponent(userId)}`, {
       headers: { 'Accept': 'application/json' }
     });
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('sync timeout')), 1500));
+    const res = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (res.ok) {
       const data = await res.json();

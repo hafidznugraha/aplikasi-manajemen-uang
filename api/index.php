@@ -1,7 +1,7 @@
 <?php
 
 /**
- * BudgetKu — Vercel Serverless Entrypoint
+ * BudgetKu : Vercel Serverless Entrypoint
  * Prepares writable /tmp directory structure for Laravel compiled views
  * and bootstrap caches, sanitizes empty env variables, then forwards to public/index.php.
  */
@@ -9,6 +9,10 @@
 $_ENV['VERCEL'] = '1';
 $_SERVER['VERCEL'] = '1';
 putenv('VERCEL=1');
+
+// Normalize SCRIPT_NAME and PHP_SELF so Symfony Request does not strip /api prefix
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF'] = '/index.php';
 
 chdir(__DIR__ . '/..');
 
@@ -22,7 +26,10 @@ $envDefaults = [
     'DB_PORT' => '5432',
     'DB_DATABASE' => 'postgres',
     'DB_USERNAME' => 'postgres.dmhifcfsloncgjrxzvnl',
+    'DB_PASSWORD' => 'Hafidz120934_',
     'DB_SSLMODE' => 'require',
+    'SUPABASE_URL' => 'https://dmhifcfsloncgjrxzvnl.supabase.co',
+    'SUPABASE_KEY' => 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl',
     'FILESYSTEM_DISK' => 'local',
     'QUEUE_CONNECTION' => 'database',
     'MAIL_MAILER' => 'log',
