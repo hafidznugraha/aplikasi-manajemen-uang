@@ -78,13 +78,8 @@ async function initStorage() {
   // 1. Setup Supabase Realtime WebSocket Subscriptions
   initSupabaseRealtime();
 
-  // 2. Background sync kilat langsung dari database Supabase (non-blocking, timeout 1.5s)
-  try {
-    await Promise.race([
-      syncFromSupabase(month),
-      new Promise(resolve => setTimeout(resolve, 1500))
-    ]);
-  } catch (e) {}
+  // 2. Background sync non-blocking (berjalan di latar belakang tanpa memblokir pemuatan awal)
+  syncFromSupabase(month);
 }
 
 /**
@@ -151,11 +146,14 @@ function initSupabaseRealtime() {
 async function syncFromSupabase(month) {
   try {
     const userId = getActiveUserId();
-    const fetchPromise = fetch(`/api/sync?month=${month}&user_id=${encodeURIComponent(userId)}`, {
-      headers: { 'Accept': 'application/json' }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    const res = await fetch(`/api/sync?month=${month}&user_id=${encodeURIComponent(userId)}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
     });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('sync timeout')), 1500));
-    const res = await Promise.race([fetchPromise, timeoutPromise]);
+    clearTimeout(timer);
 
     if (res.ok) {
       const data = await res.json();
@@ -224,7 +222,9 @@ async function syncFromSupabase(month) {
       }
     }
   } catch (err) {
-    console.error('Sinkronisasi Supabase gagal:', err);
+    if (err && err.name !== 'AbortError') {
+      console.warn('[Supabase Sync] Info non-kritis:', err.message || err);
+    }
   }
 }
 

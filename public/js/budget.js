@@ -273,7 +273,7 @@ async function loadBudgetDataFromSupabase() {
       .eq('month', targetMonth)
       .maybeSingle();
 
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
     const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
     if (error) {
@@ -1069,7 +1069,7 @@ async function checkPreviousMonthCategories() {
       if (prevMonth && userId) {
         try {
           const fetchPromise = fetch(`/api/sync?month=${prevMonth}&user_id=${encodeURIComponent(userId)}`);
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000));
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
           const res = await Promise.race([fetchPromise, timeoutPromise]);
           if (res && res.ok) {
             const syncData = await res.json();

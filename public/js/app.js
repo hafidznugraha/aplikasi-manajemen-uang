@@ -49,16 +49,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 4. Inisialisasi Storage & Supabase Sync (Non-blocking, max 1.5s timeout)
+  // 4. Inisialisasi Storage & Supabase Realtime
   showTopLoader(70);
   if (typeof initStorage === 'function') {
     try {
-      await Promise.race([
-        initStorage(),
-        new Promise(r => setTimeout(r, 1500))
-      ]);
+      await initStorage();
     } catch (err) {
-      console.warn('initStorage non-critical error:', err);
+      console.warn('initStorage non-critical info:', err);
     }
   }
 

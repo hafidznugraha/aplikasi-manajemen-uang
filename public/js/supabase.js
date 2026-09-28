@@ -91,7 +91,7 @@ async function getActiveSupabaseUser() {
       const syncPromise = fetch(`/api/sync?month=current&user_id=${encodeURIComponent(user.id)}`, {
         headers: { 'Accept': 'application/json' }
       });
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1200));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
       const checkRes = await Promise.race([syncPromise, timeoutPromise]);
 
       if (checkRes.ok) {
