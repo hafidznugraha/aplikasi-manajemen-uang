@@ -26,23 +26,48 @@ let currentDeleteId = null;
  * Dapatkan instance Supabase Client (Singleton)
  * @returns {object|null}
  */
-function getSupabaseClient() {
-  if (typeof window.getSupabaseClient === 'function') {
-    return window.getSupabaseClient();
+function getBudgetSupabaseClient() {
+  if (window.supabaseClient) {
+    return window.supabaseClient;
   }
-  return window.supabaseClient || null;
+  if (typeof window.getSupabaseClient === 'function' && window.getSupabaseClient !== getBudgetSupabaseClient) {
+    const c = window.getSupabaseClient();
+    if (c) return c;
+  }
+  const urlMeta = document.querySelector('meta[name="supabase-url"]');
+  const keyMeta = document.querySelector('meta[name="supabase-key"]');
+  const supabaseUrl = (urlMeta ? urlMeta.getAttribute('content') : '') || window.SUPABASE_URL || 'https://dmhifcfsloncgjrxzvnl.supabase.co';
+  const supabaseKey = (keyMeta ? keyMeta.getAttribute('content') : '') || window.SUPABASE_ANON_KEY || 'sb_publishable_0UVfI5vLmCrS4Oilr0rDMg_5YQtQsQl';
+
+  if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'function') {
+    try {
+      window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+      return window.supabaseClient;
+    } catch (e) {
+      console.warn('[Supabase] Gagal membuat client:', e);
+    }
+  }
+  return null;
 }
 
 /**
  * Dapatkan user aktif (Non-blocking)
  * @returns {Promise<object|null>}
  */
-async function getActiveSupabaseUser() {
-  if (typeof window.getActiveSupabaseUser === 'function') {
+async function getBudgetActiveUser() {
+  if (typeof window.getActiveSupabaseUser === 'function' && window.getActiveSupabaseUser !== getBudgetActiveUser) {
     return await window.getActiveSupabaseUser();
   }
   if (typeof window.getActiveUser === 'function') {
-    return window.getActiveUser();
+    const active = window.getActiveUser();
+    if (active && active.id) return active;
+  }
+  const rawUser = localStorage.getItem('budgetku_user') || sessionStorage.getItem('budgetku_user');
+  if (rawUser) {
+    try {
+      const parsed = JSON.parse(rawUser);
+      if (parsed && parsed.id) return parsed;
+    } catch (e) {}
   }
   return null;
 }
@@ -211,8 +236,8 @@ async function loadBudgetDataFromSupabase() {
   updateNavbarMonthDisplay();
   const targetMonth = currentMonthContext;
 
-  const client = getSupabaseClient();
-  const user = await getActiveSupabaseUser();
+  const client = getBudgetSupabaseClient();
+  const user = await getBudgetActiveUser();
   const userId = user && user.id ? user.id : (typeof window.getActiveUserId === 'function' ? window.getActiveUserId() : null);
 
   if (!client || !userId) {
@@ -375,7 +400,7 @@ async function handleSetBudget() {
 
   const grandTotal = bankBudget + cashBudget;
 
-  const client = getSupabaseClient();
+  const client = getBudgetSupabaseClient();
   if (!client) {
     const errorMsg = 'Koneksi ke server belum terpasang atau tidak tersedia. Pastikan perangkat Anda terhubung ke internet.';
     if (typeof window.showAppModal === 'function') {
@@ -397,7 +422,7 @@ async function handleSetBudget() {
   }
 
   try {
-    const user = await getActiveSupabaseUser();
+    const user = await getBudgetActiveUser();
     if (!user || !user.id) {
       throw new Error('Sesi pengguna tidak valid. Silakan masuk kembali ke akun Anda.');
     }
@@ -1015,9 +1040,9 @@ async function checkPreviousMonthCategories() {
   }
 
   try {
-    const user = await getActiveSupabaseUser();
+    const user = await getBudgetActiveUser();
     const userId = user && user.id ? user.id : (typeof window.getActiveUserId === 'function' ? window.getActiveUserId() : null);
-    const client = getSupabaseClient();
+    const client = getBudgetSupabaseClient();
     let hasPrevious = false;
     let prevMonthLabel = '';
 

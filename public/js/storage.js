@@ -100,8 +100,8 @@ function persistHotCache() {
 function initSupabaseRealtime() {
   if (window._supabaseRealtimeActive) return;
 
-  // Gunakan singleton client dari window.supabaseClient / getSupabaseClient()
-  _supabaseClient = window.supabaseClient || (typeof getSupabaseClient === 'function' ? getSupabaseClient() : null);
+  // Gunakan singleton client dari window.supabaseClient / window.getSupabaseClient()
+  _supabaseClient = window.supabaseClient || (typeof window.getSupabaseClient === 'function' ? window.getSupabaseClient() : null);
 
   if (!_supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
     const urlMeta = document.querySelector('meta[name="supabase-url"]');
